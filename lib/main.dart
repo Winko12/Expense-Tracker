@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+
+import 'models/transaction.dart';
+import 'providers/expense_provider.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
-  // Ensure flutter bindings are initialized before doing any async work
+  // Ensure flutter is ready before doing async stuff
   WidgetsFlutterBinding.ensureInitialized();
 
-  // We will initialize our local database here later
+  // 1. Initialize Hive Database
+  await Hive.initFlutter();
 
-  runApp(const MyApp());
+  // 2. Register our Transaction Adapter (created by the generator)
+  Hive.registerAdapter(TransactionAdapter());
+
+  // 3. Open the box (like opening a specific table in a database)
+  await Hive.openBox<Transaction>('transactionsBox');
+
+  // Wrap the app in our Provider so it can manage state
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ExpenseProvider()..loadTransactions(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -63,41 +82,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-// A temporary placeholder for our Home Screen
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Expenses')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('No expenses yet!'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Testing the iOS page transition
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SecondScreen()),
-                );
-              },
-              child: const Text('Test iOS Transition'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// A temporary second screen to test the animation
-class SecondScreen extends StatelessWidget {
-  const SecondScreen({super.key});
+  SecondScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +90,4 @@ class SecondScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Second Screen')),
       body: const Center(
         child: Text('Notice how this slid in from the right?'),
-      ),
-    );
-  }
-}
+      )
