@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'models/transaction.dart';
 import 'providers/expense_provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_screen.dart';
 
 void main() async {
   // Ensure flutter is ready before doing async stuff
@@ -78,7 +78,7 @@ class MyApp extends StatelessWidget {
         );
       },
 
-      home: const HomeScreen(), // We will create this next!
+      home: const MainScreen(), // We will create this next!
     );
   }
 }

@@ -18,7 +18,10 @@ class Transaction extends HiveObject {
   DateTime date;
 
   @HiveField(4)
-  bool isExpense; // true = Expense (money out), false = Income (money in)
+  bool isExpense;
+
+  @HiveField(5)
+  String category;
 
   Transaction({
     required this.id,
@@ -26,5 +29,6 @@ class Transaction extends HiveObject {
     required this.amount,
     required this.date,
     required this.isExpense,
+    required this.category,
   });
 }

@@ -23,6 +23,20 @@ class ExpenseProvider extends ChangeNotifier {
     return balance;
   }
 
+  Map<String, double> get categoryExpenses {
+    Map<String, double> data = {};
+    for (var tx in _transactions) {
+      if (tx.isExpense) {
+        if (data.containsKey(tx.category)) {
+          data[tx.category] = data[tx.category]! + tx.amount;
+        } else {
+          data[tx.category] = tx.amount;
+        }
+      }
+    }
+    return data;
+  }
+
   // Load all saved data from the phone's storage
   void loadTransactions() {
     var box = Hive.box<Transaction>(_boxName);

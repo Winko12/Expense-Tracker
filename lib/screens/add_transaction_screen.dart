@@ -16,9 +16,25 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
-  bool _isExpense = true; // Defaults to Expense
+  bool _isExpense = true;
 
-  // Always remember to dispose controllers when the screen closes!
+  // NEW: Category variables
+  String _selectedCategory = 'Food';
+  final List<String> _expenseCategories = [
+    'Food',
+    'Transport',
+    'Shopping',
+    'Bills',
+    'Entertainment',
+    'Other',
+  ];
+  final List<String> _incomeCategories = [
+    'Salary',
+    'Gift',
+    'Investment',
+    'Other',
+  ];
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -26,7 +42,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  // Opens the built-in calendar to pick a date
   void _presentDatePicker() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -34,7 +49,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
-
     if (pickedDate != null) {
       setState(() {
         _selectedDate = pickedDate;
@@ -42,12 +56,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
-  // Validates the form and saves to the database
   void _saveTransaction() {
     final enteredTitle = _titleController.text.trim();
     final enteredAmount = double.tryParse(_amountController.text);
 
-    // Basic Validation: Check if empty or invalid number
     if (enteredTitle.isEmpty || enteredAmount == null || enteredAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -58,28 +70,33 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    // Create the Transaction object
     final newTransaction = Transaction(
-      id: DateTime.now().millisecondsSinceEpoch.toString(), // Unique ID
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: enteredTitle,
       amount: enteredAmount,
       date: _selectedDate,
       isExpense: _isExpense,
+      category: _selectedCategory, // NEW: Save the category!
     );
 
-    // Save using our Provider
     Provider.of<ExpenseProvider>(
       context,
       listen: false,
     ).addTransaction(newTransaction);
-
-    // Close the screen and go back to Home
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    // We use a safe area and a scroll view so the keyboard doesn't cover our inputs
+    // Dynamically change dropdown list based on Income/Expense toggle
+    final currentCategories = _isExpense
+        ? _expenseCategories
+        : _incomeCategories;
+    // Make sure the selected category is actually in the current list
+    if (!currentCategories.contains(_selectedCategory)) {
+      _selectedCategory = currentCategories.first;
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Add Transaction')),
       body: SingleChildScrollView(
@@ -87,7 +104,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Income vs Expense Toggle (Material 3 Segmented Button)
             SegmentedButton<bool>(
               segments: const [
                 ButtonSegment(
@@ -108,24 +124,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 });
               },
             ),
-
             const SizedBox(height: 24),
-
-            // 2. Title TextField
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
-                labelText: 'Title (e.g., Groceries, Salary)',
+                labelText: 'Title',
                 prefixIcon: const Icon(Icons.description),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // 3. Amount TextField
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(
@@ -139,10 +149,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
 
-            // 4. Date Picker Row
+            // NEW: Category Dropdown
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              decoration: InputDecoration(
+                labelText: 'Category',
+                prefixIcon: const Icon(Icons.category),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              items: currentCategories.map((String category) {
+                return DropdownMenuItem(value: category, child: Text(category));
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedCategory = newValue!;
+                });
+              },
+            ),
+
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -158,10 +187,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 32),
-
-            // 5. Save Button
             ElevatedButton(
               onPressed: _saveTransaction,
               style: ElevatedButton.styleFrom(
