@@ -82,12 +82,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-  SecondScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Second Screen')),
-      body: const Center(
-        child: Text('Notice how this slid in from the right?'),
-      )
