@@ -27,7 +27,7 @@ class _MainScreenState extends State<MainScreen> {
   // --- UPDATED: Export and Share Logic for the latest share_plus ---
   Future<void> _exportAndShareCSV(BuildContext context) async {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
-    final transactions = provider.transactions;
+    final transactions = provider.filteredTransactions;
 
     if (transactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

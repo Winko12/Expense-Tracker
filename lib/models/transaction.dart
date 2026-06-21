@@ -23,6 +23,9 @@ class Transaction extends HiveObject {
   @HiveField(5)
   String category;
 
+  @HiveField(6)
+  String paymentMethod;
+
   Transaction({
     required this.id,
     required this.title,
@@ -30,5 +33,6 @@ class Transaction extends HiveObject {
     required this.date,
     required this.isExpense,
     required this.category,
+    required this.paymentMethod,
   });
 }
