@@ -1,5 +1,13 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:csv/csv.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../providers/expense_provider.dart';
 import 'add_transaction_screen.dart';
 import 'home_screen.dart';
 import 'stats_screen.dart';
@@ -12,10 +20,68 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0; // 0 = Home, 1 = Stats
+  int _currentIndex = 0;
 
-  // The screens we can navigate to
   final List<Widget> _screens = [const HomeScreen(), const StatsScreen()];
+
+  // --- UPDATED: Export and Share Logic for the latest share_plus ---
+  Future<void> _exportAndShareCSV(BuildContext context) async {
+    final provider = Provider.of<ExpenseProvider>(context, listen: false);
+    final transactions = provider.transactions;
+
+    if (transactions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No data to export!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // 1. Create the CSV Header Row
+    List<List<dynamic>> csvData = [
+      ['Date', 'Title', 'Category', 'Type', 'Amount'],
+    ];
+
+    // 2. Add all transactions to the CSV
+    for (var tx in transactions) {
+      csvData.add([
+        DateFormat('yyyy-MM-dd').format(tx.date),
+        tx.title,
+        tx.category,
+        tx.isExpense ? 'Expense' : 'Income',
+        tx.amount,
+      ]);
+    }
+
+    // 3. Convert List to CSV String
+    String csvString = Csv().encode(csvData);
+
+    // 4. Find a temporary directory on the phone to save the file
+    final directory = await getTemporaryDirectory();
+    final path = '${directory.path}/My_Expenses_Report.csv';
+    final file = File(path);
+
+    // 5. Write the file
+    await file.writeAsString(csvString);
+
+    // 6. Calculate position for iPads and newer iOS versions to prevent crashing
+    if (!context.mounted) return;
+    final box = context.findRenderObject() as RenderBox?;
+
+    // 7. Trigger the phone's Share menu using the newest SharePlus API!
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(path)], // Attach our CSV file
+        text: 'Here is my latest expense report!',
+        // This is highly recommended in the latest docs for iPad/iOS support
+        sharePositionOrigin: box != null
+            ? box.localToGlobal(Offset.zero) & box.size
+            : null,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +92,16 @@ class _MainScreenState extends State<MainScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Export Data',
+            // Pass context so we can calculate the UI position for the share popup
+            onPressed: () => _exportAndShareCSV(context),
+          ),
+        ],
       ),
-
-      // Shows either Home or Stats based on the bottom bar selection
       body: _screens[_currentIndex],
-
-      // The floating action button stays here so it's on all tabs!
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -45,8 +115,6 @@ class _MainScreenState extends State<MainScreen> {
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         child: const Icon(Icons.add),
       ),
-
-      // The modern Bottom Navigation Bar
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (int index) {
