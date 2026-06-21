@@ -33,6 +33,12 @@ class ExpenseProvider extends ChangeNotifier {
       'No transactions found.': 'စာရင်း မရှိပါ။',
       'Load More': 'ထပ်မံကြည့်ရှုရန်',
       'Edit Transaction': 'စာရင်းပြင်ရန်',
+      'Title': 'အကြောင်းအရာ',
+      'Amount': 'ပမာဏ',
+      'Category': 'အမျိုးအစား',
+      'Wallet': 'ပိုက်ဆံ',
+      'Save': 'သိမ်းဆည်းပါ',
+      'Delete': 'ဖျက်ပါ',
     };
     return myDict[enText] ?? enText;
   }
@@ -86,8 +92,9 @@ class ExpenseProvider extends ChangeNotifier {
       .fold(0.0, (sum, tx) => sum + tx.amount);
 
   double get monthlyAverage {
-    if (_selectedDay != null)
+    if (_selectedDay != null) {
       return monthlyExpense; // If viewing 1 day, average is just that day's cost
+    }
     int daysPassed =
         (_selectedMonth.year == DateTime.now().year &&
             _selectedMonth.month == DateTime.now().month)
@@ -132,8 +139,9 @@ class ExpenseProvider extends ChangeNotifier {
   Map<String, double> get statsCategoryExpenses {
     Map<String, double> data = {};
     for (var tx in statsTransactions) {
-      if (tx.isExpense)
+      if (tx.isExpense) {
         data[tx.category] = (data[tx.category] ?? 0) + tx.amount;
+      }
     }
     return data;
   }

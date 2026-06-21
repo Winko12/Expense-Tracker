@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -156,7 +157,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
-                labelText: 'Title',
+                labelText: provider.t('Title'),
                 prefixIcon: const Icon(Icons.description),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -170,7 +171,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 decimal: true,
               ),
               decoration: InputDecoration(
-                labelText: 'Amount',
+                labelText: provider.t('Amount'),
                 prefixIcon: const Icon(Icons.attach_money),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -184,7 +185,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _selectedCategory,
                     decoration: InputDecoration(
-                      labelText: 'Category',
+                      labelText: provider.t('Category'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -200,7 +201,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _selectedPaymentMethod,
                     decoration: InputDecoration(
-                      labelText: 'Wallet',
+                      labelText: provider.t('Wallet'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -231,11 +232,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
-              child: const Text(
-                'Save',
+              child: Text(
+                provider.t('Save'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
+            if (widget.existingTransaction != null) ...[
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: () {
+                  Provider.of<ExpenseProvider>(
+                    context,
+                    listen: false,
+                  ).deleteTransaction(widget.existingTransaction!);
+                  Navigator.pop(context);
+                },
+                icon: const Icon(CupertinoIcons.trash),
+                label: Text(provider.t('Delete')),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF3B30),
+                ), // iOS Red
+              ),
+            ],
           ],
         ).animate().fade().slideY(begin: 0.1, end: 0),
       ),
