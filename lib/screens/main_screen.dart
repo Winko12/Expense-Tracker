@@ -85,18 +85,33 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // We listen to the provider here so the AppBar updates instantly when language changes!
+    final provider = Provider.of<ExpenseProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _currentIndex == 0 ? 'Dashboard' : 'Statistics',
+          _currentIndex == 0
+              ? provider.t('Dashboard')
+              : provider.t('Statistics'),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         actions: [
+          // THE NEW LANGUAGE TOGGLE BUTTON
+          TextButton(
+            onPressed: () => provider.toggleLanguage(),
+            child: Text(
+              provider.isBurmese ? 'ENG' : 'မြန်မာ',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.ios_share),
-            tooltip: 'Export Data',
-            // Pass context so we can calculate the UI position for the share popup
             onPressed: () => _exportAndShareCSV(context),
           ),
         ],
@@ -122,16 +137,16 @@ class _MainScreenState extends State<MainScreen> {
             _currentIndex = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: provider.t('Home'), // Translated Label
           ),
           NavigationDestination(
-            icon: Icon(Icons.pie_chart_outline),
-            selectedIcon: Icon(Icons.pie_chart),
-            label: 'Stats',
+            icon: const Icon(Icons.pie_chart_outline),
+            selectedIcon: const Icon(Icons.pie_chart),
+            label: provider.t('Stats'), // Translated Label
           ),
         ],
       ),

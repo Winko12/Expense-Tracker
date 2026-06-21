@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
-import '../providers/expense_provider.dart';
 import '../models/transaction.dart';
+import '../providers/expense_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -47,7 +47,7 @@ class HomeScreen extends StatelessWidget {
               child: TextField(
                 onChanged: (value) => provider.search(value),
                 decoration: InputDecoration(
-                  hintText: 'Search by title, KBZPay, Cash...',
+                  hintText: provider.t('Search...'),
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: Theme.of(
@@ -93,12 +93,12 @@ class HomeScreen extends StatelessWidget {
                 .scale(begin: const Offset(0.95, 0.95)),
 
             const SizedBox(height: 10),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Transactions',
+                  provider.t('Transactions'),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -108,9 +108,9 @@ class HomeScreen extends StatelessWidget {
             // 4. UPDATED: Animated Transaction List
             Expanded(
               child: provider.filteredTransactions.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        'No transactions found.',
+                        provider.t('No transactions found.'),
                         style: TextStyle(color: Colors.grey),
                       ),
                     )
@@ -152,7 +152,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Total Balance',
+                    provider.t('Total Balance'),
                     style: TextStyle(
                       color: Theme.of(
                         context,
@@ -173,7 +173,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Daily Avg',
+                    provider.t('Daily Avg'),
                     style: TextStyle(
                       color: Theme.of(
                         context,
@@ -205,7 +205,7 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Income',
+                        provider.t('Income'),
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(
@@ -233,7 +233,7 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'Expense',
+                        provider.t('Expense'),
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(
