@@ -1,4 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -9,24 +10,24 @@ import '../providers/expense_provider.dart';
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
+  // Apple-inspired vibrant colors
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Food':
-        return Colors.orange;
+        return const Color(0xFFFF9500); // Orange
       case 'Transport':
-        return Colors.blue;
+        return const Color(0xFF007AFF); // Blue
       case 'Shopping':
-        return Colors.purple;
+        return const Color(0xFFAF52DE); // Purple
       case 'Bills':
-        return Colors.redAccent;
+        return const Color(0xFFFF3B30); // Red
       case 'Entertainment':
-        return Colors.teal;
+        return const Color(0xFF5856D6); // Indigo
       default:
-        return Colors.grey;
+        return const Color(0xFF8E8E93); // Gray
     }
   }
 
-  // Opens the Calendar so you can pick Start & End dates!
   Future<void> _pickDateRange(
     BuildContext context,
     ExpenseProvider provider,
@@ -36,20 +37,8 @@ class StatsScreen extends StatelessWidget {
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       initialDateRange: provider.statsDateRange,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
-    if (picked != null) {
-      provider.setStatsDateRange(picked);
-    }
+    if (picked != null) provider.setStatsDateRange(picked);
   }
 
   @override
@@ -57,11 +46,7 @@ class StatsScreen extends StatelessWidget {
     return Consumer<ExpenseProvider>(
       builder: (context, provider, child) {
         final categoryData = provider.statsCategoryExpenses;
-        final currencyFormat = NumberFormat.currency(
-          symbol: '\$',
-          decimalDigits: 0,
-        );
-
+        final format = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
         String dateText = provider.t('All Time');
         if (provider.statsDateRange != null) {
           dateText =
@@ -73,57 +58,73 @@ class StatsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. DATE RANGE PICKER BUTTON
-              ElevatedButton.icon(
-                onPressed: () => _pickDateRange(context, provider),
-                icon: const Icon(Icons.date_range),
-                label: Text(dateText, style: const TextStyle(fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // 1. Center Pill Button for Date (Apple Style)
+              Center(
+                child: GestureDetector(
+                  onTap: () => _pickDateRange(context, provider),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(CupertinoIcons.calendar, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          dateText,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ).animate().fade().slideY(begin: -0.2, end: 0),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              // 2. INCOME VS EXPENSE SUMMARY CARDS
+              // 2. Soft Gradient Summary Cards
               Row(
                 children: [
                   Expanded(
-                    child: _buildStatCard(
-                      context,
+                    child: _buildGradientStatCard(
                       provider.t('Income'),
                       provider.statsTotalIncome,
-                      Colors.green,
+                      const [Color(0xFF34C759), Color(0xFF28A745)],
                     ),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
-                    child: _buildStatCard(
-                      context,
+                    child: _buildGradientStatCard(
                       provider.t('Expense'),
                       provider.statsTotalExpense,
-                      Colors.redAccent,
+                      const [Color(0xFFFF3B30), Color(0xFFD70015)],
                     ),
                   ),
                 ],
-              ).animate().fade(delay: 100.ms).scale(),
+              ).animate().fade(delay: 100.ms),
 
-              const SizedBox(height: 30),
-
+              const SizedBox(height: 35),
               Text(
                 provider.t('Expense Breakdown'),
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ).animate().fade(delay: 200.ms),
-
               const SizedBox(height: 20),
 
-              // 3. ANIMATED PIE CHART
+              // 3. Precision Donut Chart (Apple Health Style)
               if (categoryData.isEmpty)
                 Center(
                   child: Padding(
@@ -137,27 +138,55 @@ class StatsScreen extends StatelessWidget {
               else ...[
                 SizedBox(
                       height: 250,
-                      child: PieChart(
-                        PieChartData(
-                          sectionsSpace: 4,
-                          centerSpaceRadius: 50,
-                          sections: categoryData.entries.map((entry) {
-                            final percentage =
-                                (entry.value / provider.statsTotalExpense) *
-                                100;
-                            return PieChartSectionData(
-                              color: _getCategoryColor(entry.key),
-                              value: entry.value,
-                              title: '${percentage.toStringAsFixed(0)}%',
-                              radius: 70,
-                              titleStyle: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Text in the middle of the Donut
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                provider.t('Total'),
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                              Text(
+                                format.format(provider.statsTotalExpense),
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          PieChart(
+                            PieChartData(
+                              sectionsSpace: 2, // Tiny gap for sleekness
+                              centerSpaceRadius:
+                                  80, // Large center makes it a Donut chart
+                              sections: categoryData.entries.map((entry) {
+                                final percentage =
+                                    (entry.value / provider.statsTotalExpense) *
+                                    100;
+                                return PieChartSectionData(
+                                  color: _getCategoryColor(entry.key),
+                                  value: entry.value,
+                                  title: percentage >= 5
+                                      ? '${percentage.toStringAsFixed(0)}%'
+                                      : '', // Only show % if it fits
+                                  radius: 25, // Thin ring
+                                  titleStyle: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ],
                       ),
                     )
                     .animate()
@@ -166,24 +195,71 @@ class StatsScreen extends StatelessWidget {
 
                 const SizedBox(height: 30),
 
-                // 4. DETAILED CATEGORY LIST
+                // 4. Apple Wallet Style Category List
                 ...categoryData.entries.map((entry) {
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: _getCategoryColor(entry.key),
+                  final percentage =
+                      (entry.value / provider.statsTotalExpense) * 100;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    title: Text(
-                      provider.t(entry.key),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ), // Translate category if needed
-                    trailing: Text(
-                      currencyFormat.format(entry.value),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF1C1C1E)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ).animate().fade(delay: 400.ms).slideX(begin: 0.2);
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: _getCategoryColor(entry.key),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            provider.t(entry.key),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              format.format(entry.value),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '${percentage.toStringAsFixed(1)}%',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ).animate().fade(delay: 400.ms).slideX(begin: 0.1);
                 }),
               ],
             ],
@@ -193,17 +269,28 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context,
+  // Soft Gradient Cards
+  Widget _buildGradientStatCard(
     String title,
     double amount,
-    Color color,
+    List<Color> colors,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: colors[0].withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,7 +298,9 @@ class StatsScreen extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
@@ -220,10 +309,10 @@ class StatsScreen extends StatelessWidget {
               symbol: '\$',
               decimalDigits: 0,
             ).format(amount),
-            style: TextStyle(
-              fontSize: 20,
+            style: const TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: Colors.white,
             ),
           ),
         ],

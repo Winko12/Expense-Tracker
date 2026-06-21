@@ -7,18 +7,14 @@ class ExpenseProvider extends ChangeNotifier {
   final String _boxName = 'transactionsBox';
   List<Transaction> _transactions = [];
 
-  // ==========================================
-  // 1. LANGUAGE SUPPORT (English / Burmese)
-  // ==========================================
+  // 1. LANGUAGE
   bool _isBurmese = false;
   bool get isBurmese => _isBurmese;
-
   void toggleLanguage() {
     _isBurmese = !_isBurmese;
     notifyListeners();
   }
 
-  // The built-in Translation Dictionary!
   String t(String enText) {
     if (!_isBurmese) return enText;
     const myDict = {
@@ -31,61 +27,67 @@ class ExpenseProvider extends ChangeNotifier {
       'Transactions': 'စာရင်းများ',
       'Search...': 'ရှာဖွေရန်...',
       'Home': 'အိမ်',
-      'Stats': 'စာရင်း',
+      'Stats': 'စာရင်းဇယား',
       'Expense Breakdown': 'အသုံးစရိတ် ခွဲခြမ်းစိတ်ဖြာမှု',
       'All Time': 'အချိန်အားလုံး',
       'No transactions found.': 'စာရင်း မရှိပါ။',
+      'Load More': 'ထပ်မံကြည့်ရှုရန်',
+      'Edit Transaction': 'စာရင်းပြင်ရန်',
     };
     return myDict[enText] ?? enText;
   }
 
-  // ==========================================
-  // 2. STATE & FILTERS
-  // ==========================================
+  // 2. FILTERS & PAGINATION
   DateTime _selectedMonth = DateTime.now();
+  DateTime? _selectedDay; // NEW: Specific day filter!
   String _searchQuery = '';
-  DateTimeRange? _statsDateRange; // NEW: Custom Date Range for Stats Screen
+  DateTimeRange? _statsDateRange;
+
+  int _displayedLimit = 15; // NEW: Pagination limit!
 
   DateTime get selectedMonth => _selectedMonth;
+  DateTime? get selectedDay => _selectedDay;
   String get searchQuery => _searchQuery;
   DateTimeRange? get statsDateRange => _statsDateRange;
+  bool get hasMore => filteredTransactions.length > _displayedLimit;
+
   List<Transaction> get transactions => _transactions;
 
-  // ==========================================
-  // 3. HOME SCREEN LOGIC
-  // ==========================================
+  // 3. FILTERED & PAGINATED LISTS
   List<Transaction> get filteredTransactions {
     return _transactions.where((tx) {
       final matchesMonth =
           tx.date.year == _selectedMonth.year &&
           tx.date.month == _selectedMonth.month;
+      final matchesDay =
+          _selectedDay == null ||
+          (tx.date.day == _selectedDay!.day &&
+              tx.date.month == _selectedDay!.month &&
+              tx.date.year == _selectedDay!.year);
       final matchesSearch =
           _searchQuery.isEmpty ||
           tx.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           tx.category.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           tx.paymentMethod.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesMonth && matchesSearch;
+      return matchesMonth && matchesDay && matchesSearch;
     }).toList();
   }
 
-  double get monthlyIncome => _transactions
-      .where(
-        (tx) =>
-            !tx.isExpense &&
-            tx.date.year == _selectedMonth.year &&
-            tx.date.month == _selectedMonth.month,
-      )
+  // Returns only the top 15 (or 30, 45...) items for high performance!
+  List<Transaction> get paginatedTransactions =>
+      filteredTransactions.take(_displayedLimit).toList();
+
+  // 4. DYNAMIC MATH (Reacts to Month OR Day selection!)
+  double get monthlyIncome => filteredTransactions
+      .where((tx) => !tx.isExpense)
       .fold(0.0, (sum, tx) => sum + tx.amount);
-  double get monthlyExpense => _transactions
-      .where(
-        (tx) =>
-            tx.isExpense &&
-            tx.date.year == _selectedMonth.year &&
-            tx.date.month == _selectedMonth.month,
-      )
+  double get monthlyExpense => filteredTransactions
+      .where((tx) => tx.isExpense)
       .fold(0.0, (sum, tx) => sum + tx.amount);
 
   double get monthlyAverage {
+    if (_selectedDay != null)
+      return monthlyExpense; // If viewing 1 day, average is just that day's cost
     int daysPassed =
         (_selectedMonth.year == DateTime.now().year &&
             _selectedMonth.month == DateTime.now().month)
@@ -100,23 +102,25 @@ class ExpenseProvider extends ChangeNotifier {
     (sum, tx) => tx.isExpense ? sum - tx.amount : sum + tx.amount,
   );
 
-  // ==========================================
-  // 4. STATS SCREEN LOGIC (Date Range)
-  // ==========================================
+  // Stats Screen Math
   void setStatsDateRange(DateTimeRange? range) {
     _statsDateRange = range;
     notifyListeners();
   }
 
   List<Transaction> get statsTransactions {
-    if (_statsDateRange == null)
-      return _transactions; // Show all if no range selected
-    return _transactions.where((tx) {
-      return tx.date.isAfter(
-            _statsDateRange!.start.subtract(const Duration(days: 1)),
-          ) &&
-          tx.date.isBefore(_statsDateRange!.end.add(const Duration(days: 1)));
-    }).toList();
+    if (_statsDateRange == null) return _transactions;
+    return _transactions
+        .where(
+          (tx) =>
+              tx.date.isAfter(
+                _statsDateRange!.start.subtract(const Duration(days: 1)),
+              ) &&
+              tx.date.isBefore(
+                _statsDateRange!.end.add(const Duration(days: 1)),
+              ),
+        )
+        .toList();
   }
 
   double get statsTotalIncome => statsTransactions
@@ -125,7 +129,6 @@ class ExpenseProvider extends ChangeNotifier {
   double get statsTotalExpense => statsTransactions
       .where((tx) => tx.isExpense)
       .fold(0.0, (sum, tx) => sum + tx.amount);
-
   Map<String, double> get statsCategoryExpenses {
     Map<String, double> data = {};
     for (var tx in statsTransactions) {
@@ -135,26 +138,37 @@ class ExpenseProvider extends ChangeNotifier {
     return data;
   }
 
-  // ==========================================
   // 5. ACTIONS
-  // ==========================================
   void changeMonth(int offset) {
     _selectedMonth = DateTime(
       _selectedMonth.year,
       _selectedMonth.month + offset,
       1,
     );
+    _selectedDay = null; // Reset day filter
+    _displayedLimit = 15; // Reset pagination
+    notifyListeners();
+  }
+
+  void pickDay(DateTime? day) {
+    _selectedDay = day;
+    _displayedLimit = 15;
     notifyListeners();
   }
 
   void search(String query) {
     _searchQuery = query;
+    _displayedLimit = 15;
+    notifyListeners();
+  }
+
+  void loadMore() {
+    _displayedLimit += 15;
     notifyListeners();
   }
 
   void loadTransactions() {
-    var box = Hive.box<Transaction>(_boxName);
-    _transactions = box.values.toList();
+    _transactions = Hive.box<Transaction>(_boxName).values.toList();
     _transactions.sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
   }
