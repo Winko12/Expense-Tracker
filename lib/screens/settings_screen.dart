@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:csv/csv.dart';
+import 'package:expense_tracker/screens/category_settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -108,6 +109,25 @@ class SettingsScreen extends StatelessWidget {
               color: Colors.grey,
               fontSize: 12,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const Divider(height: 0, indent: 50),
+        ListTile(
+          leading: const Icon(CupertinoIcons.square_list, color: Colors.orange),
+          title: Text(
+            provider.t('Manage Categories'),
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            size: 16,
+            color: Colors.grey,
+          ),
+          onTap: () => Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => const CategorySettingsScreen(),
             ),
           ),
         ),

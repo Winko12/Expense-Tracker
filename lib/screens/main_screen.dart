@@ -51,16 +51,19 @@ class _MainScreenState extends State<MainScreen> {
       floatingActionButton: _currentIndex != 2
           ? FloatingActionButton(
               onPressed: () {
+                // THIS IS THE iOS MAGIC ANIMATION!
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  CupertinoPageRoute(
+                    fullscreenDialog:
+                        true, // Makes it slide up from the bottom!
                     builder: (context) => const AddTransactionScreen(),
                   ),
                 );
               },
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              child: const Icon(Icons.add),
+              child: const Icon(CupertinoIcons.add),
             )
           : null,
 

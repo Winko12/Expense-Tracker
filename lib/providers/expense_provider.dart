@@ -1,3 +1,4 @@
+import 'package:expense_tracker/models/category_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -44,6 +45,10 @@ class ExpenseProvider extends ChangeNotifier {
       'Export Data (CSV)': 'ဒေတာထုတ်ယူရန် (CSV)', // NEW
       'Clear All Data': 'ဒေတာအားလုံးဖျက်ရန်', // NEW
       'Add Transaction': 'စာရင်းသွင်းရန်',
+      'Manage Categories': 'အမျိုးအစားများစီမံရန်',
+      'Add Category': 'အမျိုးအစားထည့်ရန်',
+      'Edit Category': 'အမျိုးအစားပြင်ရန်',
+      'Category Name': 'အမျိုးအစားအမည်',
     };
     return myDict[enText] ?? enText;
   }
@@ -194,6 +199,54 @@ class ExpenseProvider extends ChangeNotifier {
   void deleteTransaction(Transaction transaction) {
     transaction.delete();
     loadTransactions();
+  }
+
+  // ==========================================
+  // 6. CATEGORY CRUD
+  // ==========================================
+  List<CategoryItem> _categories = [];
+
+  // Get string lists for the Dropdown menus
+  List<String> get expenseCategories =>
+      _categories.where((c) => c.isExpense).map((c) => c.name).toList();
+  List<String> get incomeCategories =>
+      _categories.where((c) => !c.isExpense).map((c) => c.name).toList();
+  List<CategoryItem> get rawCategories => _categories;
+
+  void loadCategories() {
+    var box = Hive.box<CategoryItem>('categoriesBox');
+    if (box.isEmpty) {
+      // Create defaults if it's the first time
+      box.addAll([
+        CategoryItem(id: '1', name: 'Food', isExpense: true),
+        CategoryItem(id: '2', name: 'Transport', isExpense: true),
+        CategoryItem(id: '3', name: 'Shopping', isExpense: true),
+        CategoryItem(id: '4', name: 'Bills', isExpense: true),
+        CategoryItem(id: '5', name: 'Entertainment', isExpense: true),
+        CategoryItem(id: '6', name: 'Other', isExpense: true),
+        CategoryItem(id: '7', name: 'Salary', isExpense: false),
+        CategoryItem(id: '8', name: 'Gift', isExpense: false),
+        CategoryItem(id: '9', name: 'Investment', isExpense: false),
+      ]);
+    }
+    _categories = box.values.toList();
+    notifyListeners();
+  }
+
+  void addCategory(CategoryItem category) {
+    Hive.box<CategoryItem>('categoriesBox').add(category);
+    loadCategories();
+  }
+
+  void updateCategory(CategoryItem category, String newName) {
+    category.name = newName;
+    category.save();
+    loadCategories();
+  }
+
+  void deleteCategory(CategoryItem category) {
+    category.delete();
+    loadCategories();
   }
 
   void clearAllData() {

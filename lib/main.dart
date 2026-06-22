@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'models/category_item.dart';
 import 'models/transaction.dart';
 import 'providers/expense_provider.dart';
 import 'screens/main_screen.dart';
@@ -15,14 +16,18 @@ void main() async {
 
   // 2. Register our Transaction Adapter (created by the generator)
   Hive.registerAdapter(TransactionAdapter());
+  Hive.registerAdapter(CategoryItemAdapter());
 
   // 3. Open the box (like opening a specific table in a database)
   await Hive.openBox<Transaction>('transactionsBox');
+  await Hive.openBox<CategoryItem>('categoriesBox');
 
   // Wrap the app in our Provider so it can manage state
   runApp(
     ChangeNotifierProvider(
-      create: (context) => ExpenseProvider()..loadTransactions(),
+      create: (context) => ExpenseProvider()
+        ..loadTransactions()
+        ..loadCategories(),
       child: const MyApp(),
     ),
   );

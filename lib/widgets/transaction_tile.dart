@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -54,12 +55,17 @@ class TransactionTile extends StatelessWidget {
       ),
       onDismissed: (_) => provider.deleteTransaction(tx),
       child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddTransactionScreen(existingTransaction: tx),
-          ),
-        ),
+        onTap: () {
+          // THIS IS THE iOS MAGIC ANIMATION!
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              fullscreenDialog: true, // Makes it slide up from the bottom!
+              builder: (context) =>
+                  AddTransactionScreen(existingTransaction: tx),
+            ),
+          );
+        },
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),

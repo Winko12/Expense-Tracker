@@ -1,14 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction.dart';
 import '../providers/expense_provider.dart';
+import '../widgets/ios_form_elements.dart'; // IMPORT EXTRACTED WIDGETS!
 
 class AddTransactionScreen extends StatefulWidget {
-  final Transaction? existingTransaction; // If passed = EDIT MODE!
+  final Transaction? existingTransaction;
   const AddTransactionScreen({super.key, this.existingTransaction});
 
   @override
@@ -48,7 +48,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   void initState() {
     super.initState();
-    // If we are editing, fill the text boxes with the existing data!
     if (widget.existingTransaction != null) {
       final tx = widget.existingTransaction!;
       _titleController.text = tx.title;
@@ -67,25 +66,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  void _presentDatePicker() async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (pickedDate != null) setState(() => _selectedDate = pickedDate);
-  }
-
   void _saveTransaction() {
     final enteredTitle = _titleController.text.trim();
     final enteredAmount = double.tryParse(_amountController.text);
-
     if (enteredTitle.isEmpty || enteredAmount == null || enteredAmount <= 0)
       return;
 
     if (widget.existingTransaction != null) {
-      // EDIT MODE: Update existing Hive object
       final tx = widget.existingTransaction!;
       tx.title = enteredTitle;
       tx.amount = enteredAmount;
@@ -93,10 +80,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       tx.isExpense = _isExpense;
       tx.category = _selectedCategory;
       tx.paymentMethod = _selectedPaymentMethod;
-      tx.save(); // Hive saves changes automatically!
+      tx.save();
       Provider.of<ExpenseProvider>(context, listen: false).loadTransactions();
     } else {
-      // ADD MODE: Create new object
       final newTx = Transaction(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: enteredTitle,
@@ -118,144 +104,178 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
     final currentCategories = _isExpense
-        ? _expenseCategories
-        : _incomeCategories;
-    if (!currentCategories.contains(_selectedCategory))
+        ? provider.expenseCategories
+        : provider.incomeCategories;
+    if (currentCategories.isEmpty) {
+      currentCategories.add('Default'); // Safety fallback
+    }
+
+    if (!currentCategories.contains(_selectedCategory)) {
       _selectedCategory = currentCategories.first;
+    }
 
     return Scaffold(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : const Color(0xFFF2F2F7), // iOS Background Color
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text(
           widget.existingTransaction != null
               ? provider.t('Edit Transaction')
               : provider.t('Add Transaction'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
+        leading: TextButton(
+          // iOS "Cancel" button on the left
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel', style: TextStyle(fontSize: 16)),
+        ),
+        leadingWidth: 80,
+        actions: [
+          // iOS "Save" button on the right
+          TextButton(
+            onPressed: _saveTransaction,
+            child: const Text(
+              'Save',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: true,
-                  label: Text('Expense'),
-                  icon: Icon(Icons.arrow_downward),
-                ),
-                ButtonSegment(
-                  value: false,
-                  label: Text('Income'),
-                  icon: Icon(Icons.arrow_upward),
-                ),
-              ],
-              selected: {_isExpense},
-              onSelectionChanged: (val) =>
-                  setState(() => _isExpense = val.first),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: provider.t('Title'),
-                prefixIcon: const Icon(Icons.description),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            // iOS Style Segmented Control
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1C1C1E)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: CupertinoSlidingSegmentedControl<bool>(
+                groupValue: _isExpense,
+                children: const {
+                  true: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text('Expense'),
+                  ),
+                  false: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text('Income'),
+                  ),
+                },
+                onValueChanged: (val) => setState(() => _isExpense = val!),
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
+            const SizedBox(height: 24),
+
+            // USING OUR NEW EXTRACTED WIDGETS!
+            IOSTextField(
+              controller: _titleController,
+              placeholder: 'Title',
+              icon: CupertinoIcons.doc_text,
+            ),
+            IOSTextField(
               controller: _amountController,
+              placeholder: 'Amount',
+              icon: CupertinoIcons.money_dollar,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: InputDecoration(
-                labelText: provider.t('Amount'),
-                prefixIcon: const Icon(Icons.attach_money),
-                border: OutlineInputBorder(
+            ),
+
+            IOSDropdown(
+              value: _selectedCategory,
+              items: currentCategories,
+              icon: CupertinoIcons.folder,
+              onChanged: (v) => setState(() => _selectedCategory = v!),
+            ),
+            IOSDropdown(
+              value: _selectedPaymentMethod,
+              items: _paymentMethods,
+              icon: CupertinoIcons.creditcard,
+              onChanged: (v) => setState(() => _selectedPaymentMethod = v!),
+            ),
+
+            // iOS Date Picker Button
+            GestureDetector(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _selectedDate = picked);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1C1C1E)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedCategory,
-                    decoration: InputDecoration(
-                      labelText: provider.t('Category'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.calendar,
+                      color: Colors.grey,
+                      size: 20,
                     ),
-                    items: currentCategories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedCategory = v!),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedPaymentMethod,
-                    decoration: InputDecoration(
-                      labelText: provider.t('Wallet'),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Date: ${DateFormat('MMM dd, yyyy').format(_selectedDate)}',
+                      style: const TextStyle(fontSize: 16),
                     ),
-                    items: _paymentMethods
-                        .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedPaymentMethod = v!),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _presentDatePicker,
-              icon: const Icon(Icons.calendar_month),
-              label: Text(
-                'Date: ${DateFormat('MMM dd, yyyy').format(_selectedDate)}',
-                style: const TextStyle(fontSize: 16),
               ),
             ),
             const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _saveTransaction,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+
+            // Delete Button (Only shows when editing)
+            if (widget.existingTransaction != null)
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1C1C1E)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TextButton(
+                  onPressed: () {
+                    Provider.of<ExpenseProvider>(
+                      context,
+                      listen: false,
+                    ).deleteTransaction(widget.existingTransaction!);
+                    Navigator.pop(context);
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'Delete Transaction',
+                      style: TextStyle(
+                        color: CupertinoColors.destructiveRed,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              child: Text(
-                provider.t('Save'),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            if (widget.existingTransaction != null) ...[
-              const SizedBox(height: 10),
-              TextButton.icon(
-                onPressed: () {
-                  Provider.of<ExpenseProvider>(
-                    context,
-                    listen: false,
-                  ).deleteTransaction(widget.existingTransaction!);
-                  Navigator.pop(context);
-                },
-                icon: const Icon(CupertinoIcons.trash),
-                label: Text(provider.t('Delete')),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF3B30),
-                ), // iOS Red
-              ),
-            ],
           ],
-        ).animate().fade().slideY(begin: 0.1, end: 0),
+        ),
       ),
     );
   }
