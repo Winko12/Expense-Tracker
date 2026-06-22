@@ -7,24 +7,37 @@ import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
 
-class StatsScreen extends StatelessWidget {
+class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
 
-  // Apple-inspired vibrant colors
+  @override
+  State<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends State<StatsScreen> {
+  // NEW: Toggle state for the Donut Chart
+  bool _showExpense = true;
+
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Food':
-        return const Color(0xFFFF9500); // Orange
+        return const Color(0xFFFF9500);
       case 'Transport':
-        return const Color(0xFF007AFF); // Blue
+        return const Color(0xFF007AFF);
       case 'Shopping':
-        return const Color(0xFFAF52DE); // Purple
+        return const Color(0xFFAF52DE);
       case 'Bills':
-        return const Color(0xFFFF3B30); // Red
+        return const Color(0xFFFF3B30);
       case 'Entertainment':
-        return const Color(0xFF5856D6); // Indigo
+        return const Color(0xFF5856D6);
+      case 'Salary':
+        return const Color(0xFF34C759); // Green for Salary
+      case 'Gift':
+        return const Color(0xFFFF2D55); // Pink for Gift
+      case 'Investment':
+        return const Color(0xFF5AC8FA); // Light Blue
       default:
-        return const Color(0xFF8E8E93); // Gray
+        return const Color(0xFF8E8E93);
     }
   }
 
@@ -45,8 +58,13 @@ class StatsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ExpenseProvider>(
       builder: (context, provider, child) {
-        final categoryData = provider.statsCategoryExpenses;
+        // Fetch data based on the toggle!
+        final categoryData = provider.getStatsCategoryData(_showExpense);
         final format = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+        final totalAmountForChart = _showExpense
+            ? provider.statsTotalExpense
+            : provider.statsTotalIncome;
+
         String dateText = provider.t('All Time');
         if (provider.statsDateRange != null) {
           dateText =
@@ -58,7 +76,6 @@ class StatsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Center Pill Button for Date (Apple Style)
               Center(
                 child: GestureDetector(
                   onTap: () => _pickDateRange(context, provider),
@@ -92,8 +109,6 @@ class StatsScreen extends StatelessWidget {
               ).animate().fade().slideY(begin: -0.2, end: 0),
 
               const SizedBox(height: 25),
-
-              // 2. Soft Gradient Summary Cards
               Row(
                 children: [
                   Expanded(
@@ -115,16 +130,35 @@ class StatsScreen extends StatelessWidget {
               ).animate().fade(delay: 100.ms),
 
               const SizedBox(height: 35),
-              Text(
-                provider.t('Expense Breakdown'),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+
+              // NEW: iOS Toggle for Income/Expense Breakdown
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1C1C1E)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: CupertinoSlidingSegmentedControl<bool>(
+                  groupValue: _showExpense,
+                  children: {
+                    true: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(provider.t('Expense')),
+                    ),
+                    false: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(provider.t('Income')),
+                    ),
+                  },
+                  onValueChanged: (val) => setState(() => _showExpense = val!),
                 ),
               ).animate().fade(delay: 200.ms),
+
               const SizedBox(height: 20),
 
-              // 3. Precision Donut Chart (Apple Health Style)
               if (categoryData.isEmpty)
                 Center(
                   child: Padding(
@@ -141,7 +175,6 @@ class StatsScreen extends StatelessWidget {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Text in the middle of the Donut
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -153,7 +186,7 @@ class StatsScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                format.format(provider.statsTotalExpense),
+                                format.format(totalAmountForChart),
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -163,20 +196,18 @@ class StatsScreen extends StatelessWidget {
                           ),
                           PieChart(
                             PieChartData(
-                              sectionsSpace: 2, // Tiny gap for sleekness
-                              centerSpaceRadius:
-                                  80, // Large center makes it a Donut chart
+                              sectionsSpace: 2,
+                              centerSpaceRadius: 80,
                               sections: categoryData.entries.map((entry) {
                                 final percentage =
-                                    (entry.value / provider.statsTotalExpense) *
-                                    100;
+                                    (entry.value / totalAmountForChart) * 100;
                                 return PieChartSectionData(
                                   color: _getCategoryColor(entry.key),
                                   value: entry.value,
                                   title: percentage >= 5
                                       ? '${percentage.toStringAsFixed(0)}%'
-                                      : '', // Only show % if it fits
-                                  radius: 25, // Thin ring
+                                      : '',
+                                  radius: 25,
                                   titleStyle: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -195,10 +226,8 @@ class StatsScreen extends StatelessWidget {
 
                 const SizedBox(height: 30),
 
-                // 4. Apple Wallet Style Category List
                 ...categoryData.entries.map((entry) {
-                  final percentage =
-                      (entry.value / provider.statsTotalExpense) * 100;
+                  final percentage = (entry.value / totalAmountForChart) * 100;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.symmetric(
@@ -269,7 +298,6 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  // Soft Gradient Cards
   Widget _buildGradientStatCard(
     String title,
     double amount,

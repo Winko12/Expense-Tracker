@@ -1,35 +1,26 @@
 import 'dart:io';
 
 import 'package:csv/csv.dart';
-import 'package:expense_tracker/screens/category_settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart'; // NEW: For animations!
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../providers/expense_provider.dart';
+import 'category_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  // Export Logic Moved Here!
   Future<void> _exportAndShareCSV(
     BuildContext context,
     ExpenseProvider provider,
   ) async {
     final transactions = provider.transactions;
-    if (transactions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No data to export!'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
+    if (transactions.isEmpty) return;
     List<List<dynamic>> csvData = [
       ['Date', 'Title', 'Category', 'Wallet', 'Type', 'Amount'],
     ];
@@ -43,13 +34,10 @@ class SettingsScreen extends StatelessWidget {
         tx.amount,
       ]);
     }
-
     String csvString = Csv().encode(csvData);
     final directory = await getTemporaryDirectory();
     final path = '${directory.path}/My_Expenses_Report.csv';
-    final file = File(path);
-    await file.writeAsString(csvString);
-
+    await File(path).writeAsString(csvString);
     if (!context.mounted) return;
     final box = context.findRenderObject() as RenderBox?;
     await SharePlus.instance.share(
@@ -63,18 +51,18 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // Danger Zone confirmation dialog
   void _confirmClearData(BuildContext context, ExpenseProvider provider) {
     showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Are you sure?'),
-        content: const Text(
-          'This will permanently delete all your transactions. You cannot undo this action.',
+        title: Text(provider.t('Are you sure?')),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(provider.t('This action cannot be undone.')),
         ),
         actions: [
           CupertinoDialogAction(
-            child: const Text('Cancel'),
+            child: Text(provider.t('Cancel')),
             onPressed: () => Navigator.pop(ctx),
           ),
           CupertinoDialogAction(
@@ -82,9 +70,6 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () {
               provider.clearAllData();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('All data cleared!')),
-              );
             },
             child: const Text('Delete All'),
           ),
@@ -96,128 +81,144 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
+    final bgColor = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF1C1C1E)
+        : Colors.white;
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       children: [
         // GROUP 1: PREFERENCES
-        const Padding(
-          padding: EdgeInsets.only(left: 8, bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
           child: Text(
             'PREFERENCES',
             style: TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const Divider(height: 0, indent: 50),
-        ListTile(
-          leading: const Icon(CupertinoIcons.square_list, color: Colors.orange),
-          title: Text(
-            provider.t('Manage Categories'),
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          trailing: const Icon(
-            CupertinoIcons.chevron_right,
-            size: 16,
-            color: Colors.grey,
-          ),
-          onTap: () => Navigator.push(
-            context,
-            CupertinoPageRoute(
-              builder: (context) => const CategorySettingsScreen(),
+              color: Colors.grey[600],
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
         Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF1C1C1E)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ListTile(
-            leading: const Icon(CupertinoIcons.globe, color: Colors.blue),
-            title: Text(
-              provider.t('Language'),
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  provider.isBurmese ? 'မြန်မာ' : 'English',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  CupertinoIcons.chevron_right,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-              ],
-            ),
-            onTap: () => provider.toggleLanguage(),
-          ),
-        ),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _buildIOSListTile(
+                    icon: CupertinoIcons.globe,
+                    iconColor: Colors.blue,
+                    title: provider.t('Language'),
+                    trailingText: provider.isBurmese ? 'မြန်မာ' : 'English',
+                    onTap: () => provider.toggleLanguage(),
+                  ),
+                  const Divider(height: 0, indent: 56), // iOS Divider spacing
+                  _buildIOSListTile(
+                    icon: CupertinoIcons.square_list_fill,
+                    iconColor: Colors.orange,
+                    title: provider.t('Manage Categories'),
+                    onTap: () => Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const CategorySettingsScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+            .animate()
+            .fade(delay: 50.ms)
+            .slideY(begin: 0.1, end: 0), // Smooth slide up!
 
-        const SizedBox(height: 30),
+        const SizedBox(height: 35),
 
         // GROUP 2: DATA & EXPORT
-        const Padding(
-          padding: EdgeInsets.only(left: 8, bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
           child: Text(
             'DATA',
             style: TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
         Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF1C1C1E)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(
-                  CupertinoIcons.share_up,
-                  color: Colors.green,
-                ),
-                title: Text(
-                  provider.t('Export Data (CSV)'),
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                trailing: const Icon(
-                  CupertinoIcons.chevron_right,
-                  size: 16,
-                  color: Colors.grey,
-                ),
+              _buildIOSListTile(
+                icon: CupertinoIcons.share_up,
+                iconColor: Colors.green,
+                title: provider.t('Export Data (CSV)'),
                 onTap: () => _exportAndShareCSV(context, provider),
               ),
-              const Divider(height: 0, indent: 50),
-              ListTile(
-                leading: const Icon(CupertinoIcons.trash, color: Colors.red),
-                title: Text(
-                  provider.t('Clear All Data'),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+              const Divider(height: 0, indent: 56),
+              _buildIOSListTile(
+                icon: CupertinoIcons.trash_fill,
+                iconColor: CupertinoColors.destructiveRed,
+                title: provider.t('Clear All Data'),
+                isDestructive: true,
                 onTap: () => _confirmClearData(context, provider),
               ),
             ],
           ),
-        ),
+        ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0),
       ],
+    );
+  }
+
+  // Custom helper to make exact iOS style ListTiles
+  Widget _buildIOSListTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? trailingText,
+    bool isDestructive = false,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: iconColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+          color: isDestructive ? CupertinoColors.destructiveRed : null,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailingText != null)
+            Text(
+              trailingText,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          if (trailingText != null) const SizedBox(width: 8),
+          const Icon(
+            CupertinoIcons.chevron_right,
+            size: 18,
+            color: Colors.grey,
+          ),
+        ],
+      ),
+      onTap: onTap,
     );
   }
 }

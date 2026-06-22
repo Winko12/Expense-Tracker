@@ -171,6 +171,16 @@ class ExpenseProvider extends ChangeNotifier {
     return data;
   }
 
+  Map<String, double> getStatsCategoryData(bool isExpense) {
+    Map<String, double> data = {};
+    for (var tx in statsTransactions) {
+      if (tx.isExpense == isExpense) {
+        data[tx.category] = (data[tx.category] ?? 0) + tx.amount;
+      }
+    }
+    return data;
+  }
+
   // 5. ACTIONS
   void changeMonth(int offset) {
     _selectedMonth = DateTime(
