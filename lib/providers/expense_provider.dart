@@ -11,8 +11,18 @@ class ExpenseProvider extends ChangeNotifier {
   // 1. LANGUAGE
   bool _isBurmese = false;
   bool get isBurmese => _isBurmese;
+  ExpenseProvider() {
+    var settingsBox = Hive.box('settingsBox');
+    _isBurmese = settingsBox.get(
+      'isBurmese',
+      defaultValue: false,
+    ); // Load from memory
+  }
   void toggleLanguage() {
     _isBurmese = !_isBurmese;
+    Hive.box(
+      'settingsBox',
+    ).put('isBurmese', _isBurmese); // NEW: Save to memory instantly!
     notifyListeners();
   }
 
@@ -103,6 +113,8 @@ class ExpenseProvider extends ChangeNotifier {
   double get monthlyExpense => filteredTransactions
       .where((tx) => tx.isExpense)
       .fold(0.0, (sum, tx) => sum + tx.amount);
+
+  double get monthlyBalance => monthlyIncome - monthlyExpense;
 
   double get monthlyAverage {
     if (_selectedDay != null) {

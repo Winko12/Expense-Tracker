@@ -43,7 +43,7 @@ class SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            format.format(provider.totalBalance),
+            format.format(provider.monthlyBalance),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
