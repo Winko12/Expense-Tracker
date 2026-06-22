@@ -34,7 +34,10 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final format = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final format = NumberFormat.currency(
+      symbol: '${provider.currencySymbol} ',
+      decimalDigits: 0,
+    );
     final color = tx.isExpense
         ? const Color(0xFFFF3B30)
         : const Color(0xFF34C759);
@@ -142,7 +145,7 @@ class TransactionTile extends StatelessWidget {
                 ),
               ),
               Text(
-                '${tx.isExpense ? '-' : '+'}${format.format(tx.amount)}',
+                '${tx.isExpense ? '- ' : '+ '}${format.format(tx.amount)}',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,

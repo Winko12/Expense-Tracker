@@ -10,19 +10,31 @@ class ExpenseProvider extends ChangeNotifier {
 
   // 1. LANGUAGE
   bool _isBurmese = false;
+  String _currencySymbol = 'Ks';
+
   bool get isBurmese => _isBurmese;
+  String get currencySymbol => _currencySymbol;
+
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
-    _isBurmese = settingsBox.get(
-      'isBurmese',
-      defaultValue: false,
+    _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
+    _currencySymbol = settingsBox.get(
+      'currencySymbol',
+      defaultValue: 'Ks',
     ); // Load from memory
   }
+
   void toggleLanguage() {
     _isBurmese = !_isBurmese;
     Hive.box(
       'settingsBox',
     ).put('isBurmese', _isBurmese); // NEW: Save to memory instantly!
+    notifyListeners();
+  }
+
+  void updateCurrencySymbol(String symbol) {
+    _currencySymbol = symbol;
+    Hive.box('settingsBox').put('currencySymbol', symbol);
     notifyListeners();
   }
 
@@ -62,6 +74,8 @@ class ExpenseProvider extends ChangeNotifier {
       'Are you sure?': 'သေချာပါသလား?',
       'Cancel': 'မလုပ်တော့ပါ',
       'This action cannot be undone.': 'ဤလုပ်ဆောင်ချက်ကို ပြန်ပြင်၍မရပါ။',
+      'Currency Symbol': 'ငွေကြေးသင်္ကေတ',
+      'Contact Me': 'ဆက်သွယ်ရန်',
     };
     return myDict[enText] ?? enText;
   }

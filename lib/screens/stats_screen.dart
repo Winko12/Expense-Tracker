@@ -60,7 +60,10 @@ class _StatsScreenState extends State<StatsScreen> {
       builder: (context, provider, child) {
         // Fetch data based on the toggle!
         final categoryData = provider.getStatsCategoryData(_showExpense);
-        final format = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+        final format = NumberFormat.currency(
+          symbol: '${provider.currencySymbol} ',
+          decimalDigits: 0,
+        );
         final totalAmountForChart = _showExpense
             ? provider.statsTotalExpense
             : provider.statsTotalIncome;
@@ -116,6 +119,7 @@ class _StatsScreenState extends State<StatsScreen> {
                       provider.t('Income'),
                       provider.statsTotalIncome,
                       const [Color(0xFF34C759), Color(0xFF28A745)],
+                      provider.currencySymbol,
                     ),
                   ),
                   const SizedBox(width: 15),
@@ -124,6 +128,7 @@ class _StatsScreenState extends State<StatsScreen> {
                       provider.t('Expense'),
                       provider.statsTotalExpense,
                       const [Color(0xFFFF3B30), Color(0xFFD70015)],
+                      provider.currencySymbol,
                     ),
                   ),
                 ],
@@ -302,6 +307,7 @@ class _StatsScreenState extends State<StatsScreen> {
     String title,
     double amount,
     List<Color> colors,
+    String currencySymbol,
   ) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -334,7 +340,7 @@ class _StatsScreenState extends State<StatsScreen> {
           const SizedBox(height: 8),
           Text(
             NumberFormat.currency(
-              symbol: '\$',
+              symbol: '$currencySymbol ',
               decimalDigits: 0,
             ).format(amount),
             style: const TextStyle(

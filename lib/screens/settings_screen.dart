@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart'; // NEW: For animations!
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart'; // NEW: To open Telegram
 
 import '../providers/expense_provider.dart';
 import 'category_settings_screen.dart';
@@ -78,6 +79,49 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  // NEW: Currency Edit Dialog
+  void _showCurrencyDialog(BuildContext context, ExpenseProvider provider) {
+    final controller = TextEditingController(text: provider.currencySymbol);
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(provider.t('Currency Symbol')),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 10.0),
+          child: CupertinoTextField(
+            controller: controller,
+            placeholder: '\$, Ks, MMK, €...',
+            autofocus: true,
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(provider.t('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                provider.updateCurrencySymbol(controller.text.trim());
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // NEW: Open Telegram Function
+  Future<void> _launchTelegram() async {
+    final Uri url = Uri.parse('https://t.me/winko6');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
@@ -101,37 +145,45 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              _buildIOSListTile(
+                icon: CupertinoIcons.globe,
+                iconColor: Colors.blue,
+                title: provider.t('Language'),
+                trailingText: provider.isBurmese ? 'မြန်မာ' : 'English',
+                onTap: () => provider.toggleLanguage(),
               ),
-              child: Column(
-                children: [
-                  _buildIOSListTile(
-                    icon: CupertinoIcons.globe,
-                    iconColor: Colors.blue,
-                    title: provider.t('Language'),
-                    trailingText: provider.isBurmese ? 'မြန်မာ' : 'English',
-                    onTap: () => provider.toggleLanguage(),
-                  ),
-                  const Divider(height: 0, indent: 56), // iOS Divider spacing
-                  _buildIOSListTile(
-                    icon: CupertinoIcons.square_list_fill,
-                    iconColor: Colors.orange,
-                    title: provider.t('Manage Categories'),
-                    onTap: () => Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        builder: (context) => const CategorySettingsScreen(),
-                      ),
-                    ),
-                  ),
-                ],
+              const Divider(height: 0, indent: 56),
+
+              // NEW: Currency Editor
+              _buildIOSListTile(
+                icon: CupertinoIcons.money_dollar_circle_fill,
+                iconColor: Colors.green,
+                title: provider.t('Currency Symbol'),
+                trailingText: provider.currencySymbol,
+                onTap: () => _showCurrencyDialog(context, provider),
               ),
-            )
-            .animate()
-            .fade(delay: 50.ms)
-            .slideY(begin: 0.1, end: 0), // Smooth slide up!
+              const Divider(height: 0, indent: 56),
+
+              _buildIOSListTile(
+                icon: CupertinoIcons.square_list_fill,
+                iconColor: Colors.orange,
+                title: provider.t('Manage Categories'),
+                onTap: () => Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => const CategorySettingsScreen(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ).animate().fade(delay: 50.ms).slideY(begin: 0.1, end: 0),
 
         const SizedBox(height: 35),
 
@@ -156,7 +208,7 @@ class SettingsScreen extends StatelessWidget {
             children: [
               _buildIOSListTile(
                 icon: CupertinoIcons.share_up,
-                iconColor: Colors.green,
+                iconColor: Colors.teal,
                 title: provider.t('Export Data (CSV)'),
                 onTap: () => _exportAndShareCSV(context, provider),
               ),
@@ -171,11 +223,38 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0),
+
+        const SizedBox(height: 35),
+
+        // NEW: GROUP 3: CONNECT
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
+          child: Text(
+            'DEVELOPER',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: _buildIOSListTile(
+            icon: CupertinoIcons.paperplane_fill,
+            iconColor: Colors.blueAccent,
+            title: provider.t('Contact Me'),
+            // trailingText: '@winko6',
+            onTap: _launchTelegram,
+          ),
+        ).animate().fade(delay: 250.ms).slideY(begin: 0.1, end: 0),
       ],
     );
   }
 
-  // Custom helper to make exact iOS style ListTiles
   Widget _buildIOSListTile({
     required IconData icon,
     required Color iconColor,

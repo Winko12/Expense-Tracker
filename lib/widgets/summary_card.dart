@@ -11,7 +11,10 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final format = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final format = NumberFormat.currency(
+      symbol: '${provider.currencySymbol} ',
+      decimalDigits: 0,
+    );
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       padding: const EdgeInsets.all(24.0),
