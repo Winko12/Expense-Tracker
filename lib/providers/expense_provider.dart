@@ -39,6 +39,11 @@ class ExpenseProvider extends ChangeNotifier {
       'Wallet': 'ပိုက်ဆံ',
       'Save': 'သိမ်းဆည်းပါ',
       'Delete': 'ဖျက်ပါ',
+      'Settings': 'ဆက်တင်များ', // NEW
+      'Language': 'ဘာသာစကား', // NEW
+      'Export Data (CSV)': 'ဒေတာထုတ်ယူရန် (CSV)', // NEW
+      'Clear All Data': 'ဒေတာအားလုံးဖျက်ရန်', // NEW
+      'Add Transaction': 'စာရင်းသွင်းရန်',
     };
     return myDict[enText] ?? enText;
   }
@@ -189,5 +194,10 @@ class ExpenseProvider extends ChangeNotifier {
   void deleteTransaction(Transaction transaction) {
     transaction.delete();
     loadTransactions();
+  }
+
+  void clearAllData() {
+    Hive.box<Transaction>(_boxName).clear(); // Wipes the whole database
+    loadTransactions(); // Refreshes the UI to show 0 balance
   }
 }
