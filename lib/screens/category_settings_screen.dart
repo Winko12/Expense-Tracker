@@ -126,6 +126,31 @@ class _CategorySettingsScreenState extends State<CategorySettingsScreen> {
                 return Dismissible(
                   key: Key(cat.id),
                   direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) async {
+                    return await showCupertinoDialog<bool>(
+                      context: context,
+                      builder: (ctx) => CupertinoAlertDialog(
+                        title: Text(provider.t('Are you sure?')),
+                        content: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            provider.t('This action cannot be undone.'),
+                          ),
+                        ),
+                        actions: [
+                          CupertinoDialogAction(
+                            child: Text(provider.t('Cancel')),
+                            onPressed: () => Navigator.pop(ctx, false),
+                          ),
+                          CupertinoDialogAction(
+                            isDestructiveAction: true,
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(provider.t('Delete')),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                   background: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(

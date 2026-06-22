@@ -49,6 +49,9 @@ class ExpenseProvider extends ChangeNotifier {
       'Add Category': 'အမျိုးအစားထည့်ရန်',
       'Edit Category': 'အမျိုးအစားပြင်ရန်',
       'Category Name': 'အမျိုးအစားအမည်',
+      'Are you sure?': 'သေချာပါသလား?',
+      'Cancel': 'မလုပ်တော့ပါ',
+      'This action cannot be undone.': 'ဤလုပ်ဆောင်ချက်ကို ပြန်ပြင်၍မရပါ။',
     };
     return myDict[enText] ?? enText;
   }

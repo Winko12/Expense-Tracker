@@ -43,6 +43,31 @@ class TransactionTile extends StatelessWidget {
     return Dismissible(
       key: Key(tx.id),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        return await showCupertinoDialog<bool>(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: Text(provider.t('Are you sure?')),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(provider.t('This action cannot be undone.')),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(provider.t('Cancel')),
+                onPressed: () =>
+                    Navigator.pop(ctx, false), // Returns false, cancels swipe
+              ),
+              CupertinoDialogAction(
+                isDestructiveAction: true,
+                onPressed: () =>
+                    Navigator.pop(ctx, true), // Returns true, deletes item
+                child: Text(provider.t('Delete')),
+              ),
+            ],
+          ),
+        );
+      },
       background: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(

@@ -23,20 +23,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _selectedCategory = 'Food';
   String _selectedPaymentMethod = 'Cash';
 
-  final List<String> _expenseCategories = [
-    'Food',
-    'Transport',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Other',
-  ];
-  final List<String> _incomeCategories = [
-    'Salary',
-    'Gift',
-    'Investment',
-    'Other',
-  ];
   final List<String> _paymentMethods = [
     'Cash',
     'KBZPay',
@@ -69,8 +55,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   void _saveTransaction() {
     final enteredTitle = _titleController.text.trim();
     final enteredAmount = double.tryParse(_amountController.text);
-    if (enteredTitle.isEmpty || enteredAmount == null || enteredAmount <= 0)
+    if (enteredTitle.isEmpty || enteredAmount == null || enteredAmount <= 0) {
       return;
+    }
 
     if (widget.existingTransaction != null) {
       final tx = widget.existingTransaction!;
@@ -254,18 +241,47 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextButton(
-                  onPressed: () {
-                    Provider.of<ExpenseProvider>(
+                  // NEW: Double Confirmation logic
+                  onPressed: () async {
+                    final provider = Provider.of<ExpenseProvider>(
                       context,
                       listen: false,
-                    ).deleteTransaction(widget.existingTransaction!);
-                    Navigator.pop(context);
+                    );
+                    final confirm = await showCupertinoDialog<bool>(
+                      context: context,
+                      builder: (ctx) => CupertinoAlertDialog(
+                        title: Text(provider.t('Are you sure?')),
+                        content: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            provider.t('This action cannot be undone.'),
+                          ),
+                        ),
+                        actions: [
+                          CupertinoDialogAction(
+                            child: Text(provider.t('Cancel')),
+                            onPressed: () => Navigator.pop(ctx, false),
+                          ),
+                          CupertinoDialogAction(
+                            isDestructiveAction: true,
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(provider.t('Delete')),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    // If user clicked 'Delete', then we delete and close the screen
+                    if (confirm == true) {
+                      provider.deleteTransaction(widget.existingTransaction!);
+                      if (context.mounted) Navigator.pop(context);
+                    }
                   },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Text(
-                      'Delete Transaction',
-                      style: TextStyle(
+                      provider.t('Delete'),
+                      style: const TextStyle(
                         color: CupertinoColors.destructiveRed,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
