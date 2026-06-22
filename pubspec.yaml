@@ -112,10 +112,23 @@ flutter_launcher_icons:
   min_sdk_android: 21 # android min sdk min:16, default 21
 
 flutter_native_splash:
-  color: "#ffffff" # A clean white background (or use "#1E1E1E" for dark mode)
-  image: "lib/assets/icons/app_icon.png"
+  # Light Mode Configuration
+  color: "#ffffff"
+  image: "lib/assets/icons/app_icon_dark.png" # Dark icon for white background
+
+  # Dark Mode Configuration
+  color_dark: "#1e1e1e"
+  image_dark: "lib/assets/icons/app_icon_white.png" # White icon for dark background
+
   android: true
   ios: true
+
+  # Android 12+ (Splash Screen API) Configuration
   android_12:
-    image: "lib/assets/icons/app_icon.png"
+    color: "#ffffff"
+    image: "lib/assets/icons/app_icon_dark.png"
     icon_background_color: "#ffffff"
+    
+    color_dark: "#1e1e1e"
+    image_dark: "lib/assets/icons/app_icon_white.png"
+    icon_background_color_dark: "#1e1e1e"
