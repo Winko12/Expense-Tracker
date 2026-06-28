@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
+import 'category_transactions_screen.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -233,65 +234,85 @@ class _StatsScreenState extends State<StatsScreen> {
 
                 ...categoryData.entries.map((entry) {
                   final percentage = (entry.value / totalAmountForChart) * 100;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF1C1C1E)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: _getCategoryColor(entry.key),
-                            shape: BoxShape.circle,
+                  return GestureDetector(
+                    onTap: () {
+                      // Navigate to the drill-down screen!
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CategoryTransactionsScreen(
+                            categoryName: entry.key,
+                            isExpense: _showExpense,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            provider.t(entry.key),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1C1C1E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: _getCategoryColor(entry.key),
+                              shape: BoxShape.circle,
                             ),
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              format.format(entry.value),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              provider.t(entry.key),
                               style: const TextStyle(
+                                fontWeight: FontWeight.w600,
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              '${percentage.toStringAsFixed(1)}%',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                format.format(entry.value),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              Text(
+                                '${percentage.toStringAsFixed(1)}%',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
                     ),
                   ).animate().fade(delay: 400.ms).slideX(begin: 0.1);
                 }),

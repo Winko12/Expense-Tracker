@@ -32,6 +32,53 @@ class TransactionTile extends StatelessWidget {
     }
   }
 
+  // NEW: A beautiful iOS-style View Popup!
+  void _showViewDetails(BuildContext context) {
+    final format = NumberFormat.currency(
+      symbol: '${provider.currencySymbol} ',
+      decimalDigits: 0,
+    );
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: Text(
+          tx.title,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        message: Column(
+          children: [
+            Text(
+              '${tx.isExpense ? 'Expense' : 'Income'}: ${format.format(tx.amount)}',
+              style: TextStyle(
+                fontSize: 18,
+                color: tx.isExpense
+                    ? CupertinoColors.destructiveRed
+                    : CupertinoColors.activeGreen,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Date: ${DateFormat('MMMM dd, yyyy').format(tx.date)}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              'Category: ${provider.t(tx.category)}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              'Wallet: ${tx.paymentMethod}',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final format = NumberFormat.currency(
@@ -42,7 +89,6 @@ class TransactionTile extends StatelessWidget {
         ? const Color(0xFFFF3B30)
         : const Color(0xFF34C759);
 
-    // BRINGING BACK SWIPE TO DELETE
     return Dismissible(
       key: Key(tx.id),
       direction: DismissDirection.endToStart,
@@ -58,42 +104,27 @@ class TransactionTile extends StatelessWidget {
             actions: [
               CupertinoDialogAction(
                 child: Text(provider.t('Cancel')),
-                onPressed: () =>
-                    Navigator.pop(ctx, false), // Returns false, cancels swipe
+                onPressed: () => Navigator.pop(ctx, false),
               ),
               CupertinoDialogAction(
                 isDestructiveAction: true,
-                onPressed: () =>
-                    Navigator.pop(ctx, true), // Returns true, deletes item
+                onPressed: () => Navigator.pop(ctx, true),
                 child: Text(provider.t('Delete')),
               ),
             ],
           ),
         );
       },
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFF3B30),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
-      ),
       onDismissed: (_) => provider.deleteTransaction(tx),
       child: GestureDetector(
-        onTap: () {
-          // THIS IS THE iOS MAGIC ANIMATION!
-          Navigator.push(
-            context,
-            CupertinoPageRoute(
-              fullscreenDialog: true, // Makes it slide up from the bottom!
-              builder: (context) =>
-                  AddTransactionScreen(existingTransaction: tx),
-            ),
-          );
-        },
+        // CLICKING THE TEXT/ROW OPENS EDIT
+        onTap: () => Navigator.push(
+          context,
+          CupertinoPageRoute(
+            fullscreenDialog: true,
+            builder: (context) => AddTransactionScreen(existingTransaction: tx),
+          ),
+        ),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -112,16 +143,20 @@ class TransactionTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getCategoryIcon(tx.category),
-                  color: color,
-                  size: 24,
+              // CLICKING THE ICON OPENS VIEW DETAILS
+              GestureDetector(
+                onTap: () => _showViewDetails(context),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _getCategoryIcon(tx.category),
+                    color: color,
+                    size: 24,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),

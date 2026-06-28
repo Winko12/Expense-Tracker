@@ -24,6 +24,10 @@ class ExpenseProvider extends ChangeNotifier {
     ); // Load from memory
   }
 
+  List<String> get uniqueTitles {
+    return _transactions.map((tx) => tx.title).toSet().toList();
+  }
+
   void toggleLanguage() {
     _isBurmese = !_isBurmese;
     Hive.box(

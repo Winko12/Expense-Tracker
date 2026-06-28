@@ -164,10 +164,79 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             const SizedBox(height: 24),
 
             // USING OUR NEW EXTRACTED WIDGETS!
-            IOSTextField(
-              controller: _titleController,
-              placeholder: 'Title',
-              icon: CupertinoIcons.doc_text,
+            // NEW: SMART AUTO-COMPLETE TITLE FIELD
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.isEmpty)
+                  return const Iterable<String>.empty();
+                // Filter past titles that match what we are typing
+                return provider.uniqueTitles.where((String option) {
+                  return option.toLowerCase().contains(
+                    textEditingValue.text.toLowerCase(),
+                  );
+                });
+              },
+              onSelected: (String selection) {
+                _titleController.text = selection; // Auto-fill!
+              },
+              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                // If the user isn't using auto-suggest, keep tracking what they type manually
+                _titleController.text = controller.text;
+                controller.addListener(() {
+                  _titleController.text = controller.text;
+                });
+
+                // If it's an existing transaction, pre-fill the autocomplete box
+                if (widget.existingTransaction != null &&
+                    controller.text.isEmpty) {
+                  controller.text = widget.existingTransaction!.title;
+                }
+
+                return IOSTextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  placeholder: 'Title (e.g. Netflix)',
+                  icon: CupertinoIcons.doc_text,
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) {
+                // Beautiful floating suggestions box
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width:
+                          MediaQuery.of(context).size.width -
+                          32, // Match screen width padding
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2C2C2E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final String option = options.elementAt(index);
+                          return ListTile(
+                            leading: const Icon(
+                              CupertinoIcons.clock,
+                              color: Colors.grey,
+                              size: 18,
+                            ),
+                            title: Text(option),
+                            onTap: () => onSelected(option),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
             IOSTextField(
               controller: _amountController,
