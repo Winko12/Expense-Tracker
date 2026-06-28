@@ -1,10 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
 import '../widgets/transaction_tile.dart';
 
-class CategoryTransactionsScreen extends StatelessWidget {
+class CategoryTransactionsScreen extends StatefulWidget {
   final String categoryName;
   final bool isExpense;
 
@@ -15,13 +17,48 @@ class CategoryTransactionsScreen extends StatelessWidget {
   });
 
   @override
+  State<CategoryTransactionsScreen> createState() =>
+      _CategoryTransactionsScreenState();
+}
+
+class _CategoryTransactionsScreenState
+    extends State<CategoryTransactionsScreen> {
+  // NEW: Pagination Logic!
+  final ScrollController _scrollController = ScrollController();
+  int _limit = 15;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 50) {
+        setState(() => _limit += 15); // Load 15 more when reaching bottom!
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
 
     // Filter stats transactions to ONLY match this specific category
-    final filteredTx = provider.statsTransactions
-        .where((tx) => tx.category == categoryName && tx.isExpense == isExpense)
+    final allFilteredTx = provider.statsTransactions
+        .where(
+          (tx) =>
+              tx.category == widget.categoryName &&
+              tx.isExpense == widget.isExpense,
+        )
         .toList();
+
+    final hasMore = allFilteredTx.length > _limit;
+    final displayedTx = allFilteredTx.take(_limit).toList();
 
     return Scaffold(
       backgroundColor: Theme.of(context).brightness == Brightness.dark
@@ -29,13 +66,13 @@ class CategoryTransactionsScreen extends StatelessWidget {
           : const Color(0xFFF2F2F7),
       appBar: AppBar(
         title: Text(
-          provider.t(categoryName),
+          provider.t(widget.categoryName),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: filteredTx.isEmpty
+      body: displayedTx.isEmpty
           ? Center(
               child: Text(
                 provider.t('No transactions found.'),
@@ -43,13 +80,21 @@ class CategoryTransactionsScreen extends StatelessWidget {
               ),
             )
           : ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              itemCount: filteredTx.length,
+              itemCount: displayedTx.length + (hasMore ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == displayedTx.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Center(child: CupertinoActivityIndicator()),
+                  );
+                }
+                // ANIMATED TRANSACTION TILES!
                 return TransactionTile(
-                  tx: filteredTx[index],
+                  tx: displayedTx[index],
                   provider: provider,
-                );
+                ).animate().fade().slideX(begin: 0.05, end: 0);
               },
             ),
     );

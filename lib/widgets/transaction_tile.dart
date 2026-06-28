@@ -48,7 +48,7 @@ class TransactionTile extends StatelessWidget {
         message: Column(
           children: [
             Text(
-              '${tx.isExpense ? 'Expense' : 'Income'}: ${format.format(tx.amount)}',
+              '${provider.t(tx.isExpense ? 'Expense' : 'Income')}: ${format.format(tx.amount)}',
               style: TextStyle(
                 fontSize: 18,
                 color: tx.isExpense
@@ -58,22 +58,22 @@ class TransactionTile extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Date: ${DateFormat('MMMM dd, yyyy').format(tx.date)}',
+              '${provider.t('Date')}: ${DateFormat('MMMM dd, yyyy').format(tx.date)}',
               style: const TextStyle(fontSize: 16),
             ),
             Text(
-              'Category: ${provider.t(tx.category)}',
+              '${provider.t('Category')}: ${provider.t(tx.category)}',
               style: const TextStyle(fontSize: 16),
             ),
             Text(
-              'Wallet: ${tx.paymentMethod}',
+              '${provider.t('Wallet')}: ${tx.paymentMethod}',
               style: const TextStyle(fontSize: 16),
             ),
           ],
         ),
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+          child: Text(provider.t('Close')),
         ),
       ),
     );

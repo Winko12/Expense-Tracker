@@ -42,24 +42,88 @@ class _HomeScreenState extends State<HomeScreen> {
         return Column(
           children: [
             // Search Bar
+            // 1. iOS Style SMART Search Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[800]
-                      : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TextField(
-                  onChanged: (val) => provider.search(val),
-                  decoration: InputDecoration(
-                    hintText: provider.t('Search...'),
-                    icon: const Icon(CupertinoIcons.search, color: Colors.grey),
-                    border: InputBorder.none,
-                  ),
-                ),
+              child: Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty)
+                    return const Iterable<String>.empty();
+                  // Check against titles, categories, and wallets!
+                  return provider.searchSuggestions.where((option) {
+                    return option.toLowerCase().contains(
+                      textEditingValue.text.toLowerCase(),
+                    );
+                  });
+                },
+                onSelected: (String selection) {
+                  provider.search(selection); // Instantly filter list!
+                  FocusScope.of(context).unfocus(); // Close keyboard
+                },
+                fieldViewBuilder:
+                    (context, controller, focusNode, onEditingComplete) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[800]
+                              : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          onChanged: (val) =>
+                              provider.search(val), // Update list while typing
+                          decoration: InputDecoration(
+                            hintText: provider.t('Search...'),
+                            icon: const Icon(
+                              CupertinoIcons.search,
+                              color: Colors.grey,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      );
+                    },
+                optionsViewBuilder: (context, onSelected, options) {
+                  // Beautiful floating auto-suggest box
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.transparent,
+                      child: Container(
+                        width: MediaQuery.of(context).size.width - 40,
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF2C2C2E)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return ListTile(
+                              leading: const Icon(
+                                CupertinoIcons.search,
+                                color: Colors.grey,
+                                size: 18,
+                              ),
+                              title: Text(option),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
 

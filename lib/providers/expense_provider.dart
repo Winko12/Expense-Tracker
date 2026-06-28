@@ -80,6 +80,8 @@ class ExpenseProvider extends ChangeNotifier {
       'This action cannot be undone.': 'ဤလုပ်ဆောင်ချက်ကို ပြန်ပြင်၍မရပါ။',
       'Currency Symbol': 'ငွေကြေးသင်္ကေတ',
       'Contact Me': 'ဆက်သွယ်ရန်',
+      'Date': 'ရက်စွဲ',
+      'Close': 'ပိတ်မည်',
     };
     return myDict[enText] ?? enText;
   }
@@ -156,6 +158,18 @@ class ExpenseProvider extends ChangeNotifier {
   void setStatsDateRange(DateTimeRange? range) {
     _statsDateRange = range;
     notifyListeners();
+  }
+
+  List<String> get searchSuggestions {
+    final Set<String> suggestions = {};
+    suggestions.addAll(uniqueTitles); // Past titles (Netflix, KFC, etc)
+    suggestions.addAll(
+      rawCategories.map((c) => c.name),
+    ); // Categories (Food, Transport)
+    suggestions.addAll(
+      _transactions.map((tx) => tx.paymentMethod),
+    ); // Wallets (KBZPay)
+    return suggestions.toList();
   }
 
   List<Transaction> get statsTransactions {
