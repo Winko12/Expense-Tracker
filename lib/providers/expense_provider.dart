@@ -11,11 +11,14 @@ class ExpenseProvider extends ChangeNotifier {
   // 1. LANGUAGE
   bool _isBurmese = false;
   String _currencySymbol = 'Ks';
-  int _savingsPercentage = 0;
+  double _savingsValue = 20.0;
+  bool _isSavingsPercentage = true;
 
   bool get isBurmese => _isBurmese;
   String get currencySymbol => _currencySymbol;
-  int get savingsPercentage => _savingsPercentage;
+
+  double get savingsValue => _savingsValue;
+  bool get isSavingsPercentage => _isSavingsPercentage;
 
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
@@ -24,7 +27,11 @@ class ExpenseProvider extends ChangeNotifier {
       'currencySymbol',
       defaultValue: 'Ks',
     ); // Load from memory
-    _savingsPercentage = settingsBox.get('savingsPercentage', defaultValue: 20);
+    _savingsValue = settingsBox.get('savingsValue', defaultValue: 20.0);
+    _isSavingsPercentage = settingsBox.get(
+      'isSavingsPercentage',
+      defaultValue: true,
+    );
   }
 
   List<String> get uniqueTitles {
@@ -45,9 +52,11 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateSavingsPercentage(int percent) {
-    _savingsPercentage = percent;
-    Hive.box('settingsBox').put('savingsPercentage', percent);
+  void updateSavings(double value, bool isPercentage) {
+    _savingsValue = value;
+    _isSavingsPercentage = isPercentage;
+    Hive.box('settingsBox').put('savingsValue', value);
+    Hive.box('settingsBox').put('isSavingsPercentage', isPercentage);
     notifyListeners();
   }
 
@@ -102,6 +111,8 @@ class ExpenseProvider extends ChangeNotifier {
       'Savings Goal': 'စုဆောင်းငွေ ရည်မှန်းချက်',
       'Locked Savings': 'ဖယ်ထားသော စုဆောင်းငွေ',
       'Spendable Income': 'သုံးစွဲနိုင်သော ဝင်ငွေ',
+      'Percentage': 'ရာခိုင်နှုန်း',
+      'Export PDF': 'PDF ထုတ်ယူရန်',
     };
     return myDict[enText] ?? enText;
   }
@@ -204,8 +215,17 @@ class ExpenseProvider extends ChangeNotifier {
         .fold(0.0, (sum, tx) => sum + tx.amount);
   }
 
-  double get lockedSavings =>
-      realCurrentMonthIncome * (_savingsPercentage / 100);
+  double get lockedSavings {
+    double locked = _isSavingsPercentage
+        ? realCurrentMonthIncome * (_savingsValue / 100)
+        : _savingsValue;
+
+    if (locked > realCurrentMonthIncome) {
+      return realCurrentMonthIncome; // Cap at max income
+    }
+    if (locked < 0) return 0;
+    return locked;
+  }
 
   double get spendableIncome => realCurrentMonthIncome - lockedSavings;
 
