@@ -11,9 +11,11 @@ class ExpenseProvider extends ChangeNotifier {
   // 1. LANGUAGE
   bool _isBurmese = false;
   String _currencySymbol = 'Ks';
+  int _savingsPercentage = 0;
 
   bool get isBurmese => _isBurmese;
   String get currencySymbol => _currencySymbol;
+  int get savingsPercentage => _savingsPercentage;
 
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
@@ -22,6 +24,7 @@ class ExpenseProvider extends ChangeNotifier {
       'currencySymbol',
       defaultValue: 'Ks',
     ); // Load from memory
+    _savingsPercentage = settingsBox.get('savingsPercentage', defaultValue: 20);
   }
 
   List<String> get uniqueTitles {
@@ -39,6 +42,12 @@ class ExpenseProvider extends ChangeNotifier {
   void updateCurrencySymbol(String symbol) {
     _currencySymbol = symbol;
     Hive.box('settingsBox').put('currencySymbol', symbol);
+    notifyListeners();
+  }
+
+  void updateSavingsPercentage(int percent) {
+    _savingsPercentage = percent;
+    Hive.box('settingsBox').put('savingsPercentage', percent);
     notifyListeners();
   }
 
@@ -90,17 +99,20 @@ class ExpenseProvider extends ChangeNotifier {
       'per day': 'တစ်ရက်လျှင်',
       'Overspent!': 'သုံးစရိတ်ပိုနေပါသည်!',
       'This Month': 'ယခုလ',
+      'Savings Goal': 'စုဆောင်းငွေ ရည်မှန်းချက်',
+      'Locked Savings': 'ဖယ်ထားသော စုဆောင်းငွေ',
+      'Spendable Income': 'သုံးစွဲနိုင်သော ဝင်ငွေ',
     };
     return myDict[enText] ?? enText;
   }
 
   // 2. FILTERS & PAGINATION
   DateTime _selectedMonth = DateTime.now();
-  DateTime? _selectedDay; // NEW: Specific day filter!
+  DateTime? _selectedDay;
   String _searchQuery = '';
   DateTimeRange? _statsDateRange;
 
-  int _displayedLimit = 15; // NEW: Pagination limit!
+  int _displayedLimit = 15;
 
   DateTime get selectedMonth => _selectedMonth;
   DateTime? get selectedDay => _selectedDay;
@@ -192,9 +204,13 @@ class ExpenseProvider extends ChangeNotifier {
         .fold(0.0, (sum, tx) => sum + tx.amount);
   }
 
+  double get lockedSavings =>
+      realCurrentMonthIncome * (_savingsPercentage / 100);
+
+  double get spendableIncome => realCurrentMonthIncome - lockedSavings;
+
   // 3. How much money is left this month?
-  double get realRemainingBalance =>
-      realCurrentMonthIncome - realCurrentMonthExpense;
+  double get realRemainingBalance => spendableIncome - realCurrentMonthExpense;
 
   // 4. How many days are left in this month? (Including today)
   int get remainingDaysInMonth {

@@ -16,8 +16,6 @@ class BudgetScreen extends StatelessWidget {
       symbol: '${provider.currencySymbol} ',
       decimalDigits: 0,
     );
-
-    // Determine if user is safe or over budget
     final isSafe = provider.realRemainingBalance > 0;
 
     return SingleChildScrollView(
@@ -31,14 +29,8 @@ class BudgetScreen extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isSafe
-                    ? [
-                        const Color(0xFF34C759),
-                        const Color(0xFF28A745),
-                      ] // Green for safe
-                    : [
-                        const Color(0xFFFF3B30),
-                        const Color(0xFFD70015),
-                      ], // Red for overspent
+                    ? [const Color(0xFF34C759), const Color(0xFF28A745)]
+                    : [const Color(0xFFFF3B30), const Color(0xFFD70015)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -93,7 +85,61 @@ class BudgetScreen extends StatelessWidget {
 
           const SizedBox(height: 35),
 
-          // 2. BREAKDOWN TITLE
+          // 2. SAVINGS GOAL SLIDER (NEW!)
+          Padding(
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  provider.t('Savings Goal').toUpperCase(),
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${provider.savingsPercentage}%',
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fade(delay: 100.ms),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1C1C1E)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const Icon(CupertinoIcons.lock_shield_fill, color: Colors.blue),
+                Expanded(
+                  child: CupertinoSlider(
+                    value: provider.savingsPercentage.toDouble(),
+                    min: 0,
+                    max: 100,
+                    divisions: 100,
+                    activeColor: Colors.blue,
+                    onChanged: (val) =>
+                        provider.updateSavingsPercentage(val.toInt()),
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 35),
+
+          // 3. THE MATH BREAKDOWN
           Padding(
             padding: const EdgeInsets.only(left: 8, bottom: 8),
             child: Text(
@@ -106,7 +152,6 @@ class BudgetScreen extends StatelessWidget {
             ),
           ).animate().fade(delay: 200.ms),
 
-          // 3. THE MATH BREAKDOWN (iOS Inset Grouped List)
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
@@ -125,10 +170,29 @@ class BudgetScreen extends StatelessWidget {
                 ),
                 const Divider(height: 0, indent: 56),
 
+                // NEW: Show how much is locked!
+                _buildMathRow(
+                  context,
+                  provider.t('Locked Savings'),
+                  '- ${format.format(provider.lockedSavings)}',
+                  CupertinoIcons.lock_fill,
+                  Colors.blue,
+                ),
+                const Divider(height: 0, indent: 56),
+
+                _buildMathRow(
+                  context,
+                  provider.t('Spendable Income'),
+                  format.format(provider.spendableIncome),
+                  CupertinoIcons.money_dollar_circle,
+                  Colors.orange,
+                ),
+                const Divider(height: 0, indent: 56),
+
                 _buildMathRow(
                   context,
                   provider.t('Expense'),
-                  format.format(provider.realCurrentMonthExpense),
+                  '- ${format.format(provider.realCurrentMonthExpense)}',
                   CupertinoIcons.arrow_up_right_circle_fill,
                   Colors.red,
                 ),
@@ -138,8 +202,8 @@ class BudgetScreen extends StatelessWidget {
                   context,
                   provider.t('Remaining Balance'),
                   format.format(provider.realRemainingBalance),
-                  CupertinoIcons.money_dollar_circle_fill,
-                  Colors.blue,
+                  CupertinoIcons.checkmark_seal_fill,
+                  Colors.teal,
                 ),
                 const Divider(height: 0, indent: 56),
 
@@ -148,7 +212,7 @@ class BudgetScreen extends StatelessWidget {
                   provider.t('Remaining Days'),
                   '${provider.remainingDaysInMonth}',
                   CupertinoIcons.calendar,
-                  Colors.orange,
+                  Colors.purple,
                 ),
               ],
             ),
