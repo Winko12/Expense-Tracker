@@ -82,6 +82,14 @@ class ExpenseProvider extends ChangeNotifier {
       'Contact Me': 'ဆက်သွယ်ရန်',
       'Date': 'ရက်စွဲ',
       'Close': 'ပိတ်မည်',
+      'Budget': 'ဘတ်ဂျက်',
+      'Daily Limit': 'နေ့စဉ်သုံးစွဲခွင့်',
+      'Remaining Days': 'ကျန်ရှိသောရက်များ',
+      'Remaining Balance': 'လက်ကျန်ငွေ',
+      'You can safely spend': 'ယနေ့အတွက် သုံးစွဲနိုင်သော ပမာဏ',
+      'per day': 'တစ်ရက်လျှင်',
+      'Overspent!': 'သုံးစရိတ်ပိုနေပါသည်!',
+      'This Month': 'ယခုလ',
     };
     return myDict[enText] ?? enText;
   }
@@ -153,6 +161,53 @@ class ExpenseProvider extends ChangeNotifier {
     0.0,
     (sum, tx) => tx.isExpense ? sum - tx.amount : sum + tx.amount,
   );
+
+  // ==========================================
+  // 5. DYNAMIC DAILY BUDGET LOGIC (Current Month Only)
+  // ==========================================
+
+  // 1. Get exact income for the REAL current month
+  double get realCurrentMonthIncome {
+    DateTime now = DateTime.now();
+    return _transactions
+        .where(
+          (tx) =>
+              !tx.isExpense &&
+              tx.date.year == now.year &&
+              tx.date.month == now.month,
+        )
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  // 2. Get exact expense for the REAL current month
+  double get realCurrentMonthExpense {
+    DateTime now = DateTime.now();
+    return _transactions
+        .where(
+          (tx) =>
+              tx.isExpense &&
+              tx.date.year == now.year &&
+              tx.date.month == now.month,
+        )
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  // 3. How much money is left this month?
+  double get realRemainingBalance =>
+      realCurrentMonthIncome - realCurrentMonthExpense;
+
+  // 4. How many days are left in this month? (Including today)
+  int get remainingDaysInMonth {
+    DateTime now = DateTime.now();
+    int totalDays = DateTime(now.year, now.month + 1, 0).day;
+    return totalDays - now.day + 1;
+  }
+
+  // 5. The Magic Number: Safe Daily Limit!
+  double get safeDailyLimit {
+    if (realRemainingBalance <= 0) return 0; // Over budget!
+    return realRemainingBalance / remainingDaysInMonth;
+  }
 
   // Stats Screen Math
   void setStatsDateRange(DateTimeRange? range) {

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
 import 'add_transaction_screen.dart';
+import 'budget_screen.dart'; // NEW
 import 'home_screen.dart';
 import 'settings_screen.dart'; // NEW
 import 'stats_screen.dart';
@@ -18,10 +19,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // 1. We now have 3 separate pages!
+  // 1. We now have 4 separate pages!
   final List<Widget> _screens = [
     const HomeScreen(),
     const StatsScreen(),
+    const BudgetScreen(),
     const SettingsScreen(),
   ];
 
@@ -32,7 +34,8 @@ class _MainScreenState extends State<MainScreen> {
     // Determine title based on selected tab
     String appBarTitle = provider.t('Dashboard');
     if (_currentIndex == 1) appBarTitle = provider.t('Stats');
-    if (_currentIndex == 2) appBarTitle = provider.t('Settings');
+    if (_currentIndex == 2) appBarTitle = provider.t('Budget');
+    if (_currentIndex == 3) appBarTitle = provider.t('Settings');
 
     final safeIndex = _currentIndex < _screens.length ? _currentIndex : 0;
 
@@ -48,7 +51,7 @@ class _MainScreenState extends State<MainScreen> {
       body: _screens[safeIndex],
 
       // Floating button disappears on Settings tab to look cleaner
-      floatingActionButton: _currentIndex != 2
+      floatingActionButton: _currentIndex != 3
           ? FloatingActionButton(
               onPressed: () {
                 // THIS IS THE iOS MAGIC ANIMATION!
@@ -87,7 +90,12 @@ class _MainScreenState extends State<MainScreen> {
             label: provider.t('Stats'),
           ),
           NavigationDestination(
-            icon: const Icon(CupertinoIcons.settings),
+            icon: const Icon(CupertinoIcons.creditcard),
+            selectedIcon: const Icon(CupertinoIcons.creditcard_fill),
+            label: provider.t('Budget'),
+          ),
+          NavigationDestination(
+            icon: const Icon(CupertinoIcons.gear_alt),
             selectedIcon: const Icon(CupertinoIcons.gear_alt_fill),
             label: provider.t('Settings'),
           ),
