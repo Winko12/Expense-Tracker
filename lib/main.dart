@@ -6,6 +6,7 @@ import 'models/category_item.dart';
 import 'models/transaction.dart';
 import 'providers/expense_provider.dart';
 import 'screens/main_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   // Ensure flutter is ready before doing async stuff
@@ -13,6 +14,8 @@ void main() async {
 
   // 1. Initialize Hive Database
   await Hive.initFlutter();
+
+  await NotificationService.init();
 
   // 2. Register our Transaction Adapter (created by the generator)
   Hive.registerAdapter(TransactionAdapter());
@@ -28,7 +31,8 @@ void main() async {
     ChangeNotifierProvider(
       create: (context) => ExpenseProvider()
         ..loadTransactions()
-        ..loadCategories(),
+        ..loadCategories()
+        ..rescheduleReminder(),
       child: const MyApp(),
     ),
   );

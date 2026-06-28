@@ -181,6 +181,35 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              const Divider(height: 0, indent: 56),
+
+              _buildIOSListTile(
+                icon: CupertinoIcons.bell_fill,
+                iconColor: Colors.redAccent,
+                title: provider.t('Daily Reminder'),
+                trailingText: TimeOfDay(
+                  hour: provider.reminderHour,
+                  minute: provider.reminderMinute,
+                ).format(context),
+                onTap: () async {
+                  final TimeOfDay? picked = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(
+                      hour: provider.reminderHour,
+                      minute: provider.reminderMinute,
+                    ),
+                  );
+                  if (picked != null) {
+                    provider.updateReminderTime(picked.hour, picked.minute);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Reminder set!')),
+                      );
+                    }
+                  }
+                },
+              ),
+              const Divider(height: 0, indent: 56),
             ],
           ),
         ).animate().fade(delay: 50.ms).slideY(begin: 0.1, end: 0),

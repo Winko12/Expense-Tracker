@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -22,6 +23,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   bool _isExpense = true;
   String _selectedCategory = 'Food';
   String _selectedPaymentMethod = 'Cash';
+  double _liveAmount = 0.0; // NEW
 
   final List<String> _paymentMethods = [
     'Cash',
@@ -42,6 +44,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _isExpense = tx.isExpense;
       _selectedCategory = tx.category;
       _selectedPaymentMethod = tx.paymentMethod;
+      _liveAmount = tx.amount;
     }
   }
 
@@ -53,6 +56,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   void _saveTransaction() {
+    final provider = Provider.of<ExpenseProvider>(context, listen: false);
     final enteredTitle = _titleController.text.trim();
     final enteredAmount = double.tryParse(_amountController.text);
     if (enteredTitle.isEmpty || enteredAmount == null || enteredAmount <= 0) {
@@ -68,7 +72,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       tx.category = _selectedCategory;
       tx.paymentMethod = _selectedPaymentMethod;
       tx.save();
-      Provider.of<ExpenseProvider>(context, listen: false).loadTransactions();
+      provider.loadTransactions();
     } else {
       final newTx = Transaction(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -83,6 +87,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         context,
         listen: false,
       ).addTransaction(newTx);
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.t('Transaction saved!')),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
     Navigator.pop(context);
   }
@@ -167,8 +180,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             // NEW: SMART AUTO-COMPLETE TITLE FIELD
             Autocomplete<String>(
               optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text.isEmpty)
+                if (textEditingValue.text.isEmpty) {
                   return const Iterable<String>.empty();
+                }
                 // Filter past titles that match what we are typing
                 return provider.uniqueTitles.where((String option) {
                   return option.toLowerCase().contains(
@@ -238,14 +252,67 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 );
               },
             ),
-            IOSTextField(
-              controller: _amountController,
-              placeholder: 'Amount',
-              icon: CupertinoIcons.money_dollar,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1C1C1E)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: CupertinoTextField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+
+                placeholder: 'Amount',
+
+                prefix: const Padding(
+                  padding: EdgeInsets.only(left: 16.0),
+                  child: Icon(
+                    CupertinoIcons.money_dollar,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _liveAmount = double.tryParse(val) ?? 0.0;
+                  }); // Update live amount
+                },
               ),
             ),
+            if (_isExpense &&
+                _liveAmount > provider.safeDailyLimit &&
+                provider.safeDailyLimit > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12.0, left: 4.0),
+                child: Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.exclamationmark_triangle_fill,
+                      color: CupertinoColors.destructiveRed,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        provider.t('Warning: Exceeds safe daily limit!'),
+                        style: const TextStyle(
+                          color: CupertinoColors.destructiveRed,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ).animate().fade().slideX(begin: -0.1),
+              ),
 
             IOSDropdown(
               value: _selectedCategory,

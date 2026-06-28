@@ -47,8 +47,9 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
               child: Autocomplete<String>(
                 optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text.isEmpty)
+                  if (textEditingValue.text.isEmpty) {
                     return const Iterable<String>.empty();
+                  }
                   // Check against titles, categories, and wallets!
                   return provider.searchSuggestions.where((option) {
                     return option.toLowerCase().contains(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import '../models/transaction.dart';
+import '../services/notification_service.dart'; // Add this import at the top of the file
 
 class ExpenseProvider extends ChangeNotifier {
   final String _boxName = 'transactionsBox';
@@ -20,17 +21,41 @@ class ExpenseProvider extends ChangeNotifier {
   double get savingsValue => _savingsValue;
   bool get isSavingsPercentage => _isSavingsPercentage;
 
+  int _reminderHour = 20; // Default 8 PM (20:00)
+  int _reminderMinute = 0;
+
+  int get reminderHour => _reminderHour;
+  int get reminderMinute => _reminderMinute;
+
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
     _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
-    _currencySymbol = settingsBox.get(
-      'currencySymbol',
-      defaultValue: 'Ks',
-    ); // Load from memory
+    _currencySymbol = settingsBox.get('currencySymbol', defaultValue: 'Ks');
     _savingsValue = settingsBox.get('savingsValue', defaultValue: 20.0);
     _isSavingsPercentage = settingsBox.get(
       'isSavingsPercentage',
       defaultValue: true,
+    );
+
+    // Load reminder time
+    _reminderHour = settingsBox.get('reminderHour', defaultValue: 20);
+    _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
+  }
+
+  void updateReminderTime(int hour, int minute) {
+    _reminderHour = hour;
+    _reminderMinute = minute;
+    Hive.box('settingsBox').put('reminderHour', hour);
+    Hive.box('settingsBox').put('reminderMinute', minute);
+    rescheduleReminder();
+    notifyListeners();
+  }
+
+  void rescheduleReminder() {
+    // We call this every time the app opens!
+    NotificationService.scheduleTomorrowReminder(
+      _reminderHour,
+      _reminderMinute,
     );
   }
 
@@ -113,6 +138,10 @@ class ExpenseProvider extends ChangeNotifier {
       'Spendable Income': 'သုံးစွဲနိုင်သော ဝင်ငွေ',
       'Percentage': 'ရာခိုင်နှုန်း',
       'Export PDF': 'PDF ထုတ်ယူရန်',
+      'Daily Reminder': 'နေ့စဉ် သတိပေးချက်',
+      'Warning: Exceeds safe daily limit!':
+          'သတိပေးချက် - နေ့စဉ်သုံးစွဲခွင့်ထက် ကျော်လွန်နေပါသည်!',
+      'Transaction saved!': 'မှတ်တမ်းတင်ပြီးပါပြီ!',
     };
     return myDict[enText] ?? enText;
   }
