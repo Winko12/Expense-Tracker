@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import '../models/transaction.dart';
-import '../services/notification_service.dart'; // Add this import at the top of the file
 
 class ExpenseProvider extends ChangeNotifier {
   final String _boxName = 'transactionsBox';
@@ -56,16 +55,7 @@ class ExpenseProvider extends ChangeNotifier {
     _reminderMinute = minute;
     Hive.box('settingsBox').put('reminderHour', hour);
     Hive.box('settingsBox').put('reminderMinute', minute);
-    rescheduleReminder();
     notifyListeners();
-  }
-
-  void rescheduleReminder() {
-    // We call this every time the app opens!
-    NotificationService.scheduleTomorrowReminder(
-      _reminderHour,
-      _reminderMinute,
-    );
   }
 
   List<String> get uniqueTitles {
