@@ -7,7 +7,8 @@ class IOSTextField extends StatelessWidget {
   final String placeholder;
   final IconData icon;
   final TextInputType keyboardType;
-  final FocusNode? focusNode; // NEW
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onChanged;
 
   const IOSTextField({
     super.key,
@@ -15,7 +16,8 @@ class IOSTextField extends StatelessWidget {
     required this.placeholder,
     required this.icon,
     this.keyboardType = TextInputType.text,
-    this.focusNode, // NEW
+    this.focusNode,
+    this.onChanged,
   });
 
   @override
@@ -31,7 +33,8 @@ class IOSTextField extends StatelessWidget {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        focusNode: focusNode, // NEW
+        focusNode: focusNode,
+        onChanged: onChanged,
         decoration: InputDecoration(
           hintText: placeholder,
           prefixIcon: Icon(icon, color: Colors.grey, size: 20),

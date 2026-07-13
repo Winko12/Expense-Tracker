@@ -252,67 +252,67 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 );
               },
             ),
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF1C1C1E)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
+            IOSTextField(
+              controller: _amountController,
+              placeholder: 'Amount',
+              icon: CupertinoIcons.money_dollar,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
-              child: CupertinoTextField(
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-
-                placeholder: 'Amount',
-
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 16.0),
-                  child: Icon(
-                    CupertinoIcons.money_dollar,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                onChanged: (val) {
-                  setState(() {
-                    _liveAmount = double.tryParse(val) ?? 0.0;
-                  }); // Update live amount
-                },
-              ),
+              onChanged: (val) {
+                setState(() {
+                  _liveAmount = double.tryParse(val) ?? 0.0;
+                });
+              },
             ),
-            if (_isExpense &&
-                _liveAmount > provider.safeDailyLimit &&
-                provider.safeDailyLimit > 0)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0, left: 4.0),
-                child: Row(
-                  children: [
-                    const Icon(
-                      CupertinoIcons.exclamationmark_triangle_fill,
-                      color: CupertinoColors.destructiveRed,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        provider.t('Warning: Exceeds safe daily limit!'),
-                        style: const TextStyle(
+            // const SizedBox(height: 4),
+
+            // 2. SMART WARNING LOGIC!
+            Builder(
+              builder: (context) {
+                double currentTodayExpense = provider.todayExpense;
+
+                if (widget.existingTransaction != null &&
+                    widget.existingTransaction!.isExpense &&
+                    widget.existingTransaction!.date.day ==
+                        DateTime.now().day) {
+                  currentTodayExpense -= widget.existingTransaction!.amount;
+                }
+
+                bool isExceeding =
+                    _isExpense &&
+                    ((currentTodayExpense + _liveAmount) >
+                        provider.safeDailyLimit) &&
+                    provider.safeDailyLimit > 0;
+
+                if (isExceeding) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0, left: 4.0),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          CupertinoIcons.exclamationmark_triangle_fill,
                           color: CupertinoColors.destructiveRed,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                          size: 16,
                         ),
-                      ),
-                    ),
-                  ],
-                ).animate().fade().slideX(begin: -0.1),
-              ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            provider.t('Warning: Exceeds safe daily limit!'),
+                            style: const TextStyle(
+                              color: CupertinoColors.destructiveRed,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ).animate().fade().slideX(begin: -0.1),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
 
             IOSDropdown(
               value: _selectedCategory,

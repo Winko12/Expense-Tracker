@@ -142,6 +142,7 @@ class ExpenseProvider extends ChangeNotifier {
       'Warning: Exceeds safe daily limit!':
           'သတိပေးချက် - နေ့စဉ်သုံးစွဲခွင့်ထက် ကျော်လွန်နေပါသည်!',
       'Transaction saved!': 'မှတ်တမ်းတင်ပြီးပါပြီ!',
+      'Today Spent': 'ယနေ့သုံးစရိတ်',
     };
     return myDict[enText] ?? enText;
   }
@@ -240,6 +241,20 @@ class ExpenseProvider extends ChangeNotifier {
               tx.isExpense &&
               tx.date.year == now.year &&
               tx.date.month == now.month,
+        )
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  // NEW: Get exact expense for TODAY only!
+  double get todayExpense {
+    DateTime now = DateTime.now();
+    return _transactions
+        .where(
+          (tx) =>
+              tx.isExpense &&
+              tx.date.year == now.year &&
+              tx.date.month == now.month &&
+              tx.date.day == now.day,
         )
         .fold(0.0, (sum, tx) => sum + tx.amount);
   }

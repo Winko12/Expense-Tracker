@@ -1,14 +1,53 @@
+import 'dart:ui'; // NEW: Required for ImageFilter (Blur)
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-// NEW: PDF Packages
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
+
+// ==========================================
+// NEW: PRIVACY BLUR WIDGET!
+// ==========================================
+class ObscurableAmount extends StatefulWidget {
+  final String amountText;
+  final TextStyle style;
+  const ObscurableAmount({
+    super.key,
+    required this.amountText,
+    required this.style,
+  });
+
+  @override
+  State<ObscurableAmount> createState() => _ObscurableAmountState();
+}
+
+class _ObscurableAmountState extends State<ObscurableAmount> {
+  bool _isObscured = true; // Blurred by default!
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isObscured = !_isObscured;
+        }); // Tap to reveal/hide
+      },
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(
+          sigmaX: _isObscured ? 6.0 : 0.0, // Blurs the X axis
+          sigmaY: _isObscured ? 6.0 : 0.0, // Blurs the Y axis
+        ),
+        child: Text(widget.amountText, style: widget.style),
+      ),
+    );
+  }
+}
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -24,7 +63,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   void initState() {
     super.initState();
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
-    // Initialize text box with saved value
     _savingsController = TextEditingController(
       text: provider.savingsValue == 0
           ? ''
@@ -38,17 +76,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
     super.dispose();
   }
 
-  // ==========================================
-  // MAGIC: GENERATE BEAUTIFUL PDF REPORT
-  // ==========================================
   Future<void> _exportToPDF(ExpenseProvider provider, String currency) async {
     final pdf = pw.Document();
     final format = NumberFormat.currency(
       symbol: '$currency ',
       decimalDigits: 0,
     );
-
-    // We export PDF in English to avoid font encoding issues across different devices
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -56,7 +89,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              // HEADER
               pw.Text(
                 'Monthly Budget Report',
                 style: pw.TextStyle(
@@ -74,8 +106,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ),
               pw.SizedBox(height: 30),
-
-              // MAIN CARD
               pw.Container(
                 padding: const pw.EdgeInsets.all(20),
                 decoration: pw.BoxDecoration(
@@ -105,8 +135,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ),
               pw.SizedBox(height: 30),
-
-              // DATA TABLE
               pw.Text(
                 'Financial Breakdown',
                 style: pw.TextStyle(
@@ -116,7 +144,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
               pw.Divider(),
               pw.SizedBox(height: 10),
-
               _buildPdfRow(
                 'Total Income',
                 format.format(provider.realCurrentMonthIncome),
@@ -142,6 +169,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
               pw.SizedBox(height: 10),
               _buildPdfRow(
+                'Today Spent',
+                format.format(provider.todayExpense),
+                isBold: true,
+              ),
+              _buildPdfRow(
                 'Remaining Days',
                 '${provider.remainingDaysInMonth} Days',
               ),
@@ -150,8 +182,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
         },
       ),
     );
-
-    // Share the PDF via Native Share Sheet!
     await Printing.sharePdf(
       bytes: await pdf.save(),
       filename: 'Budget_Report.pdf',
@@ -183,9 +213,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  // ==========================================
-  // UI BUILDER
-  // ==========================================
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
@@ -239,8 +266,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  format.format(provider.safeDailyLimit),
+                // BLURRED UNTIL TOUCHED!
+                ObscurableAmount(
+                  amountText: format.format(provider.safeDailyLimit),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 42,
@@ -262,7 +290,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           const SizedBox(height: 35),
 
-          // 2. SAVINGS GOAL (TEXT INPUT + PERCENT/AMOUNT TOGGLE)
+          // 2. SAVINGS GOAL
           Padding(
             padding: const EdgeInsets.only(left: 8, bottom: 8),
             child: Text(
@@ -285,7 +313,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             child: Row(
               children: [
-                // SEGMENTED CONTROL: % vs Amount
                 CupertinoSlidingSegmentedControl<bool>(
                   groupValue: provider.isSavingsPercentage,
                   children: {
@@ -306,7 +333,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   },
                 ),
                 const SizedBox(width: 15),
-                // TEXT FIELD
                 Expanded(
                   child: CupertinoTextField(
                     controller: _savingsController,
@@ -403,12 +429,46 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   Colors.teal,
                 ),
                 const Divider(height: 0, indent: 56),
+
+                // NEW: TODAY SPENT ROW!
                 _buildMathRow(
                   context,
-                  provider.t('Remaining Days'),
-                  '${provider.remainingDaysInMonth}',
-                  CupertinoIcons.calendar,
-                  Colors.purple,
+                  provider.t('Today Spent'),
+                  format.format(provider.todayExpense),
+                  CupertinoIcons.cart_fill,
+                  Colors.pink,
+                ),
+                const Divider(height: 0, indent: 56),
+
+                // Not obscured (since it's just days)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.calendar,
+                      color: Colors.purple,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    provider.t('Remaining Days'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                    ),
+                  ),
+                  trailing: Text(
+                    '${provider.remainingDaysInMonth}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -416,7 +476,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           const SizedBox(height: 30),
 
-          // 4. EXPORT PDF BUTTON!
+          // 4. EXPORT PDF
           ElevatedButton.icon(
             onPressed: () => _exportToPDF(provider, provider.currencySymbol),
             icon: const Icon(CupertinoIcons.doc_text_fill),
@@ -460,8 +520,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
         title,
         style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
       ),
-      trailing: Text(
-        value,
+      // NEW: Uses ObscurableAmount to hide/blur money!
+      trailing: ObscurableAmount(
+        amountText: value,
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
