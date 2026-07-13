@@ -14,6 +14,8 @@ class ExpenseProvider extends ChangeNotifier {
   String _currencySymbol = 'Ks';
   double _savingsValue = 20.0;
   bool _isSavingsPercentage = true;
+  int? _customRemainingDays;
+  int? get customRemainingDays => _customRemainingDays;
 
   bool get isBurmese => _isBurmese;
   String get currencySymbol => _currencySymbol;
@@ -40,6 +42,13 @@ class ExpenseProvider extends ChangeNotifier {
     // Load reminder time
     _reminderHour = settingsBox.get('reminderHour', defaultValue: 20);
     _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
+  }
+
+  // NEW: Update Custom Days (Caps at 31)
+  void updateCustomRemainingDays(int? days) {
+    if (days != null && days > 31) days = 31; // Prevent going over 31
+    _customRemainingDays = days;
+    notifyListeners();
   }
 
   void updateReminderTime(int hour, int minute) {
@@ -294,16 +303,21 @@ class ExpenseProvider extends ChangeNotifier {
   double get realRemainingBalance => spendableIncome - realCurrentMonthExpense;
 
   // 4. How many days are left in this month? (Including today)
-  int get remainingDaysInMonth {
+  // REPLACED: Now checks if you typed a custom number first!
+  int get effectiveRemainingDays {
+    if (_customRemainingDays != null && _customRemainingDays! > 0) {
+      return _customRemainingDays!;
+    }
+    // Otherwise, calculate real days left in the month
     DateTime now = DateTime.now();
     int totalDays = DateTime(now.year, now.month + 1, 0).day;
     return totalDays - now.day + 1;
   }
 
-  // 5. The Magic Number: Safe Daily Limit!
+  // UPDATED: Now divides by the effective days!
   double get safeDailyLimit {
-    if (realRemainingBalance <= 0) return 0; // Over budget!
-    return realRemainingBalance / remainingDaysInMonth;
+    if (realRemainingBalance <= 0) return 0;
+    return realRemainingBalance / effectiveRemainingDays;
   }
 
   // Stats Screen Math

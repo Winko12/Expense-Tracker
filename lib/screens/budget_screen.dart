@@ -1,4 +1,4 @@
-import 'dart:ui'; // NEW: Required for ImageFilter (Blur)
+import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
 
-// ==========================================
-// NEW: PRIVACY BLUR WIDGET!
-// ==========================================
+// Privacy Blur Widget
 class ObscurableAmount extends StatefulWidget {
   final String amountText;
   final TextStyle style;
@@ -28,20 +26,15 @@ class ObscurableAmount extends StatefulWidget {
 }
 
 class _ObscurableAmountState extends State<ObscurableAmount> {
-  bool _isObscured = true; // Blurred by default!
-
+  bool _isObscured = true;
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isObscured = !_isObscured;
-        }); // Tap to reveal/hide
-      },
+      onTap: () => setState(() => _isObscured = !_isObscured),
       child: ImageFiltered(
         imageFilter: ImageFilter.blur(
-          sigmaX: _isObscured ? 6.0 : 0.0, // Blurs the X axis
-          sigmaY: _isObscured ? 6.0 : 0.0, // Blurs the Y axis
+          sigmaX: _isObscured ? 6.0 : 0.0,
+          sigmaY: _isObscured ? 6.0 : 0.0,
         ),
         child: Text(widget.amountText, style: widget.style),
       ),
@@ -58,6 +51,7 @@ class BudgetScreen extends StatefulWidget {
 
 class _BudgetScreenState extends State<BudgetScreen> {
   late TextEditingController _savingsController;
+  late TextEditingController _daysController; // NEW: Controller for days
 
   @override
   void initState() {
@@ -68,11 +62,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ? ''
           : provider.savingsValue.toStringAsFixed(0),
     );
+
+    // NEW: Load custom days if they exist
+    _daysController = TextEditingController(
+      text: provider.customRemainingDays != null
+          ? provider.customRemainingDays.toString()
+          : '',
+    );
   }
 
   @override
   void dispose() {
     _savingsController.dispose();
+    _daysController.dispose(); // Clean up
     super.dispose();
   }
 
@@ -173,9 +175,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 format.format(provider.todayExpense),
                 isBold: true,
               ),
+
+              // UPDATED: Now uses effectiveRemainingDays for the PDF!
               _buildPdfRow(
                 'Remaining Days',
-                '${provider.remainingDaysInMonth} Days',
+                '${provider.effectiveRemainingDays} Days',
               ),
             ],
           );
@@ -266,7 +270,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // BLURRED UNTIL TOUCHED!
                 ObscurableAmount(
                   amountText: format.format(provider.safeDailyLimit),
                   style: const TextStyle(
@@ -429,8 +432,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   Colors.teal,
                 ),
                 const Divider(height: 0, indent: 56),
-
-                // NEW: TODAY SPENT ROW!
                 _buildMathRow(
                   context,
                   provider.t('Today Spent'),
@@ -440,7 +441,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
                 const Divider(height: 0, indent: 56),
 
-                // Not obscured (since it's just days)
+                // NEW: EDITABLE REMAINING DAYS ROW!
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(6),
@@ -461,12 +462,33 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  trailing: Text(
-                    '${provider.remainingDaysInMonth}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+                  trailing: SizedBox(
+                    width: 70,
+                    child: CupertinoTextField(
+                      controller: _daysController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.right,
+                      placeholder:
+                          '${provider.effectiveRemainingDays}', // Shows real days if empty!
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                      onChanged: (val) {
+                        int? days = int.tryParse(val);
+                        if (days != null && days > 31) {
+                          days = 31;
+                          _daysController.text = '31';
+                          _daysController.selection =
+                              TextSelection.fromPosition(
+                                const TextPosition(offset: 2),
+                              );
+                        }
+                        provider.updateCustomRemainingDays(
+                          days,
+                        ); // Instantly updates math!
+                      },
                     ),
                   ),
                 ),
@@ -520,7 +542,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
         title,
         style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
       ),
-      // NEW: Uses ObscurableAmount to hide/blur money!
       trailing: ObscurableAmount(
         amountText: value,
         style: const TextStyle(
