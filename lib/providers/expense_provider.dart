@@ -143,6 +143,7 @@ class ExpenseProvider extends ChangeNotifier {
           'သတိပေးချက် - နေ့စဉ်သုံးစွဲခွင့်ထက် ကျော်လွန်နေပါသည်!',
       'Transaction saved!': 'မှတ်တမ်းတင်ပြီးပါပြီ!',
       'Today Spent': 'ယနေ့သုံးစရိတ်',
+      'Available Balance': 'သုံးစွဲနိုင်သော လက်ကျန်ငွေ',
     };
     return myDict[enText] ?? enText;
   }
@@ -196,6 +197,22 @@ class ExpenseProvider extends ChangeNotifier {
       .fold(0.0, (sum, tx) => sum + tx.amount);
 
   double get monthlyBalance => monthlyIncome - monthlyExpense;
+
+  // NEW: Calculate savings for the specifically selected month on the dashboard
+  double get filteredLockedSavings {
+    double locked = _isSavingsPercentage
+        ? monthlyIncome * (_savingsValue / 100)
+        : _savingsValue;
+
+    if (locked > monthlyIncome) return monthlyIncome;
+    if (locked < 0) return 0;
+    return locked;
+  }
+
+  // NEW: The true balance you are allowed to spend on the Dashboard!
+  double get filteredSpendableBalance {
+    return monthlyIncome - filteredLockedSavings - monthlyExpense;
+  }
 
   double get monthlyAverage {
     if (_selectedDay != null) {

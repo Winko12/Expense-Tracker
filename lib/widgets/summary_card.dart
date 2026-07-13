@@ -11,10 +11,12 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Note: Kept the space after the currency symbol for clean formatting
     final format = NumberFormat.currency(
       symbol: '${provider.currencySymbol} ',
       decimalDigits: 0,
     );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       padding: const EdgeInsets.all(24.0),
@@ -36,8 +38,9 @@ class SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. MAIN BALANCE (Now reflects your Spendable Balance!)
           Text(
-            provider.t('Total Balance'),
+            provider.t('Available Balance'),
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
               fontSize: 14,
@@ -46,7 +49,7 @@ class SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            format.format(provider.monthlyBalance),
+            format.format(provider.filteredSpendableBalance),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
@@ -55,20 +58,16 @@ class SummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+
+          // 2. REPLACED INCOME/EXPENSE WITH SAVINGS & AVG
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildCardMiniStat(
-                provider.t('Income'),
-                format.format(provider.monthlyIncome),
-                CupertinoIcons.arrow_down_left_circle_fill,
-                Colors.greenAccent,
-              ),
-              _buildCardMiniStat(
-                provider.t('Expense'),
-                format.format(provider.monthlyExpense),
-                CupertinoIcons.arrow_up_right_circle_fill,
-                Colors.redAccent,
+                provider.t('Locked Savings'),
+                format.format(provider.filteredLockedSavings),
+                CupertinoIcons.lock_fill,
+                Colors.white, // Clean white icon
               ),
             ],
           ),
