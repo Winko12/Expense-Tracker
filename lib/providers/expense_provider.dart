@@ -38,6 +38,15 @@ class ExpenseProvider extends ChangeNotifier {
       defaultValue: true,
     );
 
+    int? startMs = settingsBox.get('statsStartDate');
+    int? endMs = settingsBox.get('statsEndDate');
+    if (startMs != null && endMs != null) {
+      _statsDateRange = DateTimeRange(
+        start: DateTime.fromMillisecondsSinceEpoch(startMs),
+        end: DateTime.fromMillisecondsSinceEpoch(endMs),
+      );
+    }
+
     // Load reminder time
     _reminderHour = settingsBox.get('reminderHour', defaultValue: 20);
     _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
@@ -143,6 +152,7 @@ class ExpenseProvider extends ChangeNotifier {
       'Transaction saved!': 'မှတ်တမ်းတင်ပြီးပါပြီ!',
       'Today Spent': 'ယနေ့သုံးစရိတ်',
       'Available Balance': 'သုံးစွဲနိုင်သော လက်ကျန်ငွေ',
+      'Rollover Balance': 'ယခင်လမှလက်ကျန်',
     };
     return myDict[enText] ?? enText;
   }
@@ -197,6 +207,21 @@ class ExpenseProvider extends ChangeNotifier {
 
   double get monthlyBalance => monthlyIncome - monthlyExpense;
 
+  double _calculateRollover(DateTime targetMonth) {
+    DateTime firstDayOfTarget = DateTime(
+      targetMonth.year,
+      targetMonth.month,
+      1,
+    );
+    double rollover = 0.0;
+    for (var tx in _transactions) {
+      if (tx.date.isBefore(firstDayOfTarget)) {
+        rollover += tx.isExpense ? -tx.amount : tx.amount;
+      }
+    }
+    return rollover;
+  }
+
   // NEW: Calculate savings for the specifically selected month on the dashboard
   double get filteredLockedSavings {
     double locked = _isSavingsPercentage
@@ -210,7 +235,8 @@ class ExpenseProvider extends ChangeNotifier {
 
   // NEW: The true balance you are allowed to spend on the Dashboard!
   double get filteredSpendableBalance {
-    return monthlyIncome - filteredLockedSavings - monthlyExpense;
+    double rollover = _calculateRollover(_selectedMonth);
+    return rollover + monthlyIncome - filteredLockedSavings - monthlyExpense;
   }
 
   double get monthlyAverage {
@@ -261,6 +287,8 @@ class ExpenseProvider extends ChangeNotifier {
         .fold(0.0, (sum, tx) => sum + tx.amount);
   }
 
+  double get realRollover => _calculateRollover(DateTime.now());
+
   // NEW: Get exact expense for TODAY only!
   double get todayExpense {
     DateTime now = DateTime.now();
@@ -290,8 +318,8 @@ class ExpenseProvider extends ChangeNotifier {
   double get spendableIncome => realCurrentMonthIncome - lockedSavings;
 
   // 3. How much money is left this month?
-  double get realRemainingBalance => spendableIncome - realCurrentMonthExpense;
-
+  double get realRemainingBalance =>
+      realRollover + spendableIncome - realCurrentMonthExpense;
   // 4. How many days are left in this month? (Including today)
   // REPLACED: Now checks if you typed a custom number first!
   int get effectiveRemainingDays {
@@ -313,6 +341,14 @@ class ExpenseProvider extends ChangeNotifier {
   // Stats Screen Math
   void setStatsDateRange(DateTimeRange? range) {
     _statsDateRange = range;
+    var box = Hive.box('settingsBox');
+    if (range == null) {
+      box.delete('statsStartDate');
+      box.delete('statsEndDate');
+    } else {
+      box.put('statsStartDate', range.start.millisecondsSinceEpoch);
+      box.put('statsEndDate', range.end.millisecondsSinceEpoch);
+    }
     notifyListeners();
   }
 

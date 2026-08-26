@@ -147,6 +147,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
               pw.Divider(),
               pw.SizedBox(height: 10),
               _buildPdfRow(
+                'Rollover Balance',
+                format.format(provider.realRollover),
+              ),
+              _buildPdfRow(
+                'Total Income',
+                format.format(provider.realCurrentMonthIncome),
+              ),
+              _buildPdfRow(
                 'Total Income',
                 format.format(provider.realCurrentMonthIncome),
               ),
@@ -392,6 +400,16 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             child: Column(
               children: [
+                if (provider.realRollover != 0) ...[
+                  _buildMathRow(
+                    context,
+                    provider.t('Rollover Balance'),
+                    format.format(provider.realRollover),
+                    CupertinoIcons.arrow_turn_down_right,
+                    Colors.indigo,
+                  ),
+                  const Divider(height: 0, indent: 56),
+                ],
                 _buildMathRow(
                   context,
                   provider.t('Income'),
