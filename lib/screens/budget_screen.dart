@@ -413,11 +413,21 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 _buildMathRow(
                   context,
                   provider.t('Income'),
-                  format.format(provider.realCurrentMonthIncome),
+                  '+ ${format.format(provider.realCurrentMonthIncome)}',
                   CupertinoIcons.arrow_down_left_circle_fill,
                   Colors.green,
                 ),
                 const Divider(height: 0, indent: 56),
+                if (provider.realRollover != 0) ...[
+                  _buildMathRow(
+                    context,
+                    provider.t('Total Available'),
+                    format.format(provider.totalAvailableFunds),
+                    CupertinoIcons.sum,
+                    Colors.blueGrey,
+                  ),
+                  const Divider(height: 0, indent: 56),
+                ],
                 _buildMathRow(
                   context,
                   provider.t('Locked Savings'),

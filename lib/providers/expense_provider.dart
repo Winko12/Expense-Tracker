@@ -153,6 +153,7 @@ class ExpenseProvider extends ChangeNotifier {
       'Today Spent': 'ယနေ့သုံးစရိတ်',
       'Available Balance': 'သုံးစွဲနိုင်သော လက်ကျန်ငွေ',
       'Rollover Balance': 'ယခင်လမှလက်ကျန်',
+      'Total Available': 'စုစုပေါင်းရရှိနိုင်သောငွေ',
     };
     return myDict[enText] ?? enText;
   }
@@ -289,6 +290,8 @@ class ExpenseProvider extends ChangeNotifier {
 
   double get realRollover => _calculateRollover(DateTime.now());
 
+  double get totalAvailableFunds => realRollover + realCurrentMonthIncome;
+
   // NEW: Get exact expense for TODAY only!
   double get todayExpense {
     DateTime now = DateTime.now();
@@ -304,29 +307,27 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   double get lockedSavings {
+    // Savings is calculated based on CURRENT month income (so we don't re-tax old money!)
     double locked = _isSavingsPercentage
         ? realCurrentMonthIncome * (_savingsValue / 100)
         : _savingsValue;
-
-    if (locked > realCurrentMonthIncome) {
-      return realCurrentMonthIncome; // Cap at max income
-    }
+    // BUT we cap it at totalAvailableFunds in case they want to save their rollover money too.
+    if (locked > totalAvailableFunds) return totalAvailableFunds;
     if (locked < 0) return 0;
     return locked;
   }
 
-  double get spendableIncome => realCurrentMonthIncome - lockedSavings;
+  double get spendableIncome => totalAvailableFunds - lockedSavings;
 
   // 3. How much money is left this month?
-  double get realRemainingBalance =>
-      realRollover + spendableIncome - realCurrentMonthExpense;
+  double get realRemainingBalance => spendableIncome - realCurrentMonthExpense;
+
   // 4. How many days are left in this month? (Including today)
   // REPLACED: Now checks if you typed a custom number first!
   int get effectiveRemainingDays {
     if (_customRemainingDays != null && _customRemainingDays! > 0) {
       return _customRemainingDays!;
     }
-    // Otherwise, calculate real days left in the month
     DateTime now = DateTime.now();
     int totalDays = DateTime(now.year, now.month + 1, 0).day;
     return totalDays - now.day + 1;
