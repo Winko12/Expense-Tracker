@@ -40,14 +40,16 @@ class _MainScreenState extends State<MainScreen> {
     final safeIndex = _currentIndex < _screens.length ? _currentIndex : 0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          appBarTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        elevation: 0,
-        // 2. We completely removed the cluttered App Bar actions! Everything is in Settings now.
-      ),
+      appBar: _currentIndex == 0
+          ? null
+          : AppBar(
+              title: Text(
+                appBarTitle,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              elevation: 0,
+              // 2. We completely removed the cluttered App Bar actions! Everything is in Settings now.
+            ),
       body: _screens[safeIndex],
 
       // Floating button disappears on Settings tab to look cleaner

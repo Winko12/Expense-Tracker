@@ -15,8 +15,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // The scroll controller now controls the ENTIRE page, not just the list!
   final ScrollController _scrollController = ScrollController();
+  FocusNode? _searchFocusNode; // NEW: To automatically open the keyboard!
 
   @override
   void initState() {
@@ -45,11 +45,52 @@ class _HomeScreenState extends State<HomeScreen> {
           decimalDigits: 0,
         );
 
-        // NEW: CustomScrollView allows the search bar and header to scroll away!
         return CustomScrollView(
           controller: _scrollController,
           slivers: [
-            // 1. Search Bar (Now inside a Sliver so it scrolls!)
+            // ==========================================
+            // 1. THE MAGIC PINNED HEADER!
+            // ==========================================
+            SliverAppBar(
+              pinned: true, // Stays at the top when you scroll!
+              title: Text(
+                provider.t('Dashboard'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              actions: [
+                // SEARCH ICON (Jumps to top & opens keyboard)
+                IconButton(
+                  icon: const Icon(CupertinoIcons.search, size: 22),
+                  onPressed: () {
+                    _scrollController.animateTo(
+                      0,
+                      duration: 400.ms,
+                      curve: Curves.easeOutQuart,
+                    );
+                    Future.delayed(
+                      200.ms,
+                      () => _searchFocusNode?.requestFocus(),
+                    );
+                  },
+                ),
+                // CALENDAR ICON (Jumps to top)
+                IconButton(
+                  icon: const Icon(CupertinoIcons.calendar, size: 22),
+                  onPressed: () {
+                    _scrollController.animateTo(
+                      0,
+                      duration: 400.ms,
+                      curve: Curves.easeOutQuart,
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+
+            // ==========================================
+            // 2. SEARCH BAR (Scrolls away)
+            // ==========================================
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
@@ -69,6 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   fieldViewBuilder:
                       (context, controller, focusNode, onEditingComplete) {
+                        _searchFocusNode =
+                            focusNode; // Magic: Capture the focus node!
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
@@ -135,7 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 2. Month/Day Navigation (Scrolls away)
+            // ==========================================
+            // 3. MONTH/DAY NAVIGATION (Scrolls away)
+            // ==========================================
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -210,7 +255,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 3. Minimalist Header (Scrolls away)
+            // ==========================================
+            // 4. FINANCIAL HEADER (Scrolls away)
+            // ==========================================
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
@@ -285,7 +332,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // 4. Transaction List (Fills the rest of the scroll view)
+            // ==========================================
+            // 5. TRANSACTION LIST
+            // ==========================================
             if (provider.paginatedTransactions.isEmpty)
               SliverFillRemaining(
                 child: Center(
@@ -301,12 +350,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      if (index == provider.paginatedTransactions.length) {
+                      if (index == provider.paginatedTransactions.length)
                         return const Padding(
                           padding: EdgeInsets.all(20.0),
                           child: Center(child: CupertinoActivityIndicator()),
                         );
-                      }
                       return TransactionTile(
                         tx: provider.paginatedTransactions[index],
                         provider: provider,
