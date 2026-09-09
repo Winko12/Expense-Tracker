@@ -164,6 +164,7 @@ class ExpenseProvider extends ChangeNotifier {
       'Available Balance': 'သုံးစွဲနိုင်သော လက်ကျန်ငွေ',
       'Rollover Balance': 'ယခင်လမှလက်ကျန်',
       'Total Available': 'စုစုပေါင်းရရှိနိုင်သောငွေ',
+      'Net Balance': 'အသားတင် လက်ကျန်ငွေ',
     };
     return myDict[enText] ?? enText;
   }
