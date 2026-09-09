@@ -181,7 +181,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const Divider(height: 0, indent: 56),
+              // const Divider(height: 0, indent: 56),
             ],
           ),
         ).animate().fade(delay: 50.ms).slideY(begin: 0.1, end: 0),

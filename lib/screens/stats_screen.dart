@@ -112,30 +112,30 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
               ).animate().fade().slideY(begin: -0.2, end: 0),
 
-              const SizedBox(height: 25),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildGradientStatCard(
-                      provider.t('Income'),
-                      provider.statsTotalIncome,
-                      const [Color(0xFF34C759), Color(0xFF28A745)],
-                      provider.currencySymbol,
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildGradientStatCard(
-                      provider.t('Expense'),
-                      provider.statsTotalExpense,
-                      const [Color(0xFFFF3B30), Color(0xFFD70015)],
-                      provider.currencySymbol,
-                    ),
-                  ),
-                ],
-              ).animate().fade(delay: 100.ms),
+              // const SizedBox(height: 25),
 
-              const SizedBox(height: 35),
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: _buildGradientStatCard(
+              //         provider.t('Income'),
+              //         provider.statsTotalIncome,
+              //         const [Color(0xFF34C759), Color(0xFF28A745)],
+              //         provider.currencySymbol,
+              //       ),
+              //     ),
+              //     const SizedBox(width: 15),
+              //     Expanded(
+              //       child: _buildGradientStatCard(
+              //         provider.t('Expense'),
+              //         provider.statsTotalExpense,
+              //         const [Color(0xFFFF3B30), Color(0xFFD70015)],
+              //         provider.currencySymbol,
+              //       ),
+              //     ),
+              //   ],
+              // ).animate().fade(delay: 100.ms),
+              const SizedBox(height: 30),
 
               // NEW: iOS Toggle for Income/Expense Breakdown
               Container(

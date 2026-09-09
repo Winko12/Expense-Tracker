@@ -33,6 +33,8 @@ class ExpenseProvider extends ChangeNotifier {
     _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
     _currencySymbol = settingsBox.get('currencySymbol', defaultValue: 'Ks');
     _savingsValue = settingsBox.get('savingsValue', defaultValue: 20.0);
+    // NEW: Load saved Custom Days!
+    _customRemainingDays = settingsBox.get('customRemainingDays');
     _isSavingsPercentage = settingsBox.get(
       'isSavingsPercentage',
       defaultValue: true,
@@ -54,8 +56,16 @@ class ExpenseProvider extends ChangeNotifier {
 
   // NEW: Update Custom Days (Caps at 31)
   void updateCustomRemainingDays(int? days) {
-    if (days != null && days > 31) days = 31; // Prevent going over 31
+    if (days != null && days > 31) days = 31;
     _customRemainingDays = days;
+
+    // NEW: Save to memory!
+    if (days == null) {
+      Hive.box('settingsBox').delete('customRemainingDays');
+    } else {
+      Hive.box('settingsBox').put('customRemainingDays', days);
+    }
+
     notifyListeners();
   }
 

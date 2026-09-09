@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
-import '../widgets/summary_card.dart';
+// import '../widgets/summary_card.dart';
 import '../widgets/transaction_tile.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -202,9 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            // Extracted Widget!
-            SummaryCard(provider: provider),
 
             const SizedBox(height: 15),
 
