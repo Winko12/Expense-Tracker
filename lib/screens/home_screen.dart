@@ -16,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _isSearching = false; // NEW: Controls the Search Bar visibility
+  bool _isSearching = false;
   final FocusNode _searchFocusNode = FocusNode();
 
   @override
@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isSearching = !_isSearching;
       if (!_isSearching) {
-        provider.search(''); // Clear search when closing
+        provider.search('');
       } else {
         Future.delayed(100.ms, () => _searchFocusNode.requestFocus());
       }
@@ -58,22 +58,20 @@ class _HomeScreenState extends State<HomeScreen> {
           decimalDigits: 0,
         );
 
-        // Calculate the Date text for the Header
         String dateText = provider.selectedDay != null
-            ? DateFormat('MMMM dd, yyyy').format(provider.selectedDay!)
+            ? DateFormat('MMM dd, yyyy').format(provider.selectedDay!)
             : DateFormat('MMMM yyyy').format(provider.selectedMonth);
 
         return CustomScrollView(
           controller: _scrollController,
           slivers: [
             // ==========================================
-            // 1. SMART MORPHING APP BAR
+            // 1. SMART MORPHING APP BAR (NOW WITH ARROWS)
             // ==========================================
             SliverAppBar(
               pinned: true,
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               elevation: 0,
-              // If searching, show Autocomplete. If not, show Date Picker!
               title: _isSearching
                   ? Autocomplete<String>(
                       optionsBuilder: (TextEditingValue textEditingValue) {
@@ -115,41 +113,70 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                     )
-                  : GestureDetector(
-                      onTap: () async {
-                        if (provider.selectedDay != null) {
-                          provider.pickDay(null); // Reset day
-                        } else {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: provider.selectedMonth,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                          );
-                          if (picked != null) provider.pickDay(picked);
-                        }
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            dateText,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            provider.selectedDay != null
-                                ? CupertinoIcons.xmark_circle_fill
-                                : CupertinoIcons.chevron_down,
-                            size: 16,
+                  // NEW: ADDED THE < AND > ARROWS HERE!
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(
+                            CupertinoIcons.chevron_left,
+                            size: 20,
                             color: Colors.grey,
                           ),
-                        ],
-                      ),
+                          onPressed: () => provider.changeMonth(-1),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () async {
+                            if (provider.selectedDay != null) {
+                              provider.pickDay(null); // Reset day
+                            } else {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: provider.selectedMonth,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                              );
+                              if (picked != null) provider.pickDay(picked);
+                            }
+                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                dateText,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                provider.selectedDay != null
+                                    ? CupertinoIcons.xmark_circle_fill
+                                    : CupertinoIcons.chevron_down,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 20,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () => provider.changeMonth(1),
+                        ),
+                      ],
                     ),
               actions: [
                 IconButton(
@@ -165,15 +192,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // ==========================================
-            // 2. TRUE BALANCE HEADER (Centered, Apple Style)
+            // 2. DYNAMIC BALANCE HEADER (Animates based on day selection)
             // ==========================================
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
+                    // Title changes based on if a Day is picked!
                     Text(
-                      provider.t('Available Balance'),
+                      provider.selectedDay != null
+                          ? provider.t('Day Expense')
+                          : provider.t('Available Balance'),
                       style: const TextStyle(
                         color: Colors.grey,
                         fontSize: 14,
@@ -181,81 +211,99 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // This is the TRUE spendable balance (Rollover + Income - Savings - Expense)
+                    // Amount changes based on if a Day is picked!
                     Text(
-                      format.format(provider.filteredSpendableBalance),
+                      format.format(
+                        provider.selectedDay != null
+                            ? provider.selectedDayExpense
+                            : provider.filteredSpendableBalance,
+                      ),
                       style: TextStyle(
                         fontSize: 42,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.activeGreen.withValues(
-                              alpha: 0.1,
+
+                    // NEW: AnimatedSize smoothly collapses the pills when a day is picked!
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: provider.selectedDay != null
+                          ? const SizedBox(
+                              width: double.infinity,
+                              height: 0,
+                            ) // Disappears!
+                          : Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.activeGreen
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          CupertinoIcons.arrow_down_left,
+                                          color: CupertinoColors.activeGreen,
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          format.format(provider.monthlyIncome),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: CupertinoColors.activeGreen,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.destructiveRed
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          CupertinoIcons.arrow_up_right,
+                                          color: CupertinoColors.destructiveRed,
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          format.format(
+                                            provider.monthlyExpense,
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color:
+                                                CupertinoColors.destructiveRed,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                CupertinoIcons.arrow_down_left,
-                                color: CupertinoColors.activeGreen,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                format.format(provider.monthlyIncome),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: CupertinoColors.activeGreen,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.destructiveRed.withValues(
-                              alpha: 0.1,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                CupertinoIcons.arrow_up_right,
-                                color: CupertinoColors.destructiveRed,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                format.format(provider.monthlyExpense),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: CupertinoColors.destructiveRed,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ).animate().fade().slideY(begin: -0.1, end: 0),
@@ -280,12 +328,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      if (index == provider.paginatedTransactions.length) {
+                      if (index == provider.paginatedTransactions.length)
                         return const Padding(
                           padding: EdgeInsets.all(20.0),
                           child: Center(child: CupertinoActivityIndicator()),
                         );
-                      }
                       return TransactionTile(
                         tx: provider.paginatedTransactions[index],
                         provider: provider,

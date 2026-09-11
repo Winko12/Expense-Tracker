@@ -165,6 +165,7 @@ class ExpenseProvider extends ChangeNotifier {
       'Rollover Balance': 'ယခင်လမှလက်ကျန်',
       'Total Available': 'စုစုပေါင်းရရှိနိုင်သောငွေ',
       'Net Balance': 'အသားတင် လက်ကျန်ငွေ',
+      'Day Expense': 'တစ်ရက်တာ သုံးစရိတ်',
     };
     return myDict[enText] ?? enText;
   }
@@ -232,6 +233,20 @@ class ExpenseProvider extends ChangeNotifier {
       }
     }
     return rollover;
+  }
+
+  // NEW: Calculate exactly how much was spent on the specifically selected day
+  double get selectedDayExpense {
+    if (_selectedDay == null) return 0;
+    return _transactions
+        .where(
+          (tx) =>
+              tx.isExpense &&
+              tx.date.year == _selectedDay!.year &&
+              tx.date.month == _selectedDay!.month &&
+              tx.date.day == _selectedDay!.day,
+        )
+        .fold(0.0, (sum, tx) => sum + tx.amount);
   }
 
   // NEW: Calculate savings for the specifically selected month on the dashboard
@@ -431,6 +446,10 @@ class ExpenseProvider extends ChangeNotifier {
 
   void pickDay(DateTime? day) {
     _selectedDay = day;
+    if (day != null) {
+      // FIX: Sync the selected month with the picked day so the list doesn't go blank!
+      _selectedMonth = DateTime(day.year, day.month, 1);
+    }
     _displayedLimit = 15;
     notifyListeners();
   }
