@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
-import '../models/transaction.dart';
-import '../providers/expense_provider.dart';
-import '../screens/add_transaction_screen.dart';
+import '../../models/transaction.dart';
+import '../../providers/expense_provider.dart';
+import '../../screens/add_transaction_screen.dart';
 
 class TransactionTile extends StatelessWidget {
   final Transaction tx;

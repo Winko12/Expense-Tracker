@@ -6,7 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
-import '../widgets/transaction_tile.dart';
+import '../widgets/common/transaction_tile.dart';
 
 class CategoryTransactionsScreen extends StatefulWidget {
   final String categoryName;

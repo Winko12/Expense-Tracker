@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
-import '../widgets/transaction_tile.dart';
+import '../widgets/common/transaction_tile.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

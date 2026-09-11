@@ -1,46 +1,12 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
-
-// Privacy Blur Widget
-class ObscurableAmount extends StatefulWidget {
-  final String amountText;
-  final TextStyle style;
-  const ObscurableAmount({
-    super.key,
-    required this.amountText,
-    required this.style,
-  });
-
-  @override
-  State<ObscurableAmount> createState() => _ObscurableAmountState();
-}
-
-class _ObscurableAmountState extends State<ObscurableAmount> {
-  bool _isObscured = true;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => setState(() => _isObscured = !_isObscured),
-      child: ImageFiltered(
-        imageFilter: ImageFilter.blur(
-          sigmaX: _isObscured ? 6.0 : 0.0,
-          sigmaY: _isObscured ? 6.0 : 0.0,
-        ),
-        child: Text(widget.amountText, style: widget.style),
-      ),
-    );
-  }
-}
+import '../services/pdf_service.dart'; // Extracted!
+import '../widgets/budget/budget_components.dart'; // Extracted!
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -51,7 +17,7 @@ class BudgetScreen extends StatefulWidget {
 
 class _BudgetScreenState extends State<BudgetScreen> {
   late TextEditingController _savingsController;
-  late TextEditingController _daysController; // NEW: Controller for days
+  late TextEditingController _daysController;
 
   @override
   void initState() {
@@ -62,8 +28,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ? ''
           : provider.savingsValue.toStringAsFixed(0),
     );
-
-    // NEW: Load custom days if they exist
     _daysController = TextEditingController(
       text: provider.hasCustomDays
           ? provider.effectiveRemainingDays.toString()
@@ -74,155 +38,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   void dispose() {
     _savingsController.dispose();
-    _daysController.dispose(); // Clean up
+    _daysController.dispose();
     super.dispose();
-  }
-
-  Future<void> _exportToPDF(ExpenseProvider provider, String currency) async {
-    final pdf = pw.Document();
-    final format = NumberFormat.currency(
-      symbol: '$currency ',
-      decimalDigits: 0,
-    );
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-            children: [
-              pw.Text(
-                'Monthly Budget Report',
-                style: pw.TextStyle(
-                  fontSize: 28,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blue800,
-                ),
-              ),
-              pw.SizedBox(height: 5),
-              pw.Text(
-                'Generated on ${DateFormat('MMMM dd, yyyy').format(DateTime.now())}',
-                style: const pw.TextStyle(
-                  fontSize: 14,
-                  color: PdfColors.grey600,
-                ),
-              ),
-              pw.SizedBox(height: 30),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(20),
-                decoration: pw.BoxDecoration(
-                  color: provider.realRemainingBalance > 0
-                      ? PdfColors.green100
-                      : PdfColors.red100,
-                  borderRadius: pw.BorderRadius.circular(16),
-                ),
-                child: pw.Column(
-                  children: [
-                    pw.Text(
-                      'Safe Daily Limit',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        color: PdfColors.grey800,
-                      ),
-                    ),
-                    pw.SizedBox(height: 10),
-                    pw.Text(
-                      format.format(provider.safeDailyLimit),
-                      style: pw.TextStyle(
-                        fontSize: 36,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 30),
-              pw.Text(
-                'Financial Breakdown',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.Divider(),
-              pw.SizedBox(height: 10),
-              _buildPdfRow(
-                'Rollover Balance',
-                format.format(provider.realRollover),
-              ),
-              _buildPdfRow(
-                'Total Income',
-                format.format(provider.realCurrentMonthIncome),
-              ),
-              _buildPdfRow(
-                'Total Income',
-                format.format(provider.realCurrentMonthIncome),
-              ),
-              _buildPdfRow(
-                'Locked Savings',
-                '- ${format.format(provider.lockedSavings)}',
-              ),
-              _buildPdfRow(
-                'Spendable Income',
-                format.format(provider.spendableIncome),
-                isBold: true,
-              ),
-              pw.SizedBox(height: 10),
-              _buildPdfRow(
-                'Total Expenses',
-                '- ${format.format(provider.realCurrentMonthExpense)}',
-              ),
-              _buildPdfRow(
-                'Remaining Balance',
-                format.format(provider.realRemainingBalance),
-                isBold: true,
-              ),
-              pw.SizedBox(height: 10),
-              _buildPdfRow(
-                'Today Spent',
-                format.format(provider.todayExpense),
-                isBold: true,
-              ),
-
-              // UPDATED: Now uses effectiveRemainingDays for the PDF!
-              _buildPdfRow(
-                'Remaining Days',
-                '${provider.effectiveRemainingDays} Days',
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    await Printing.sharePdf(
-      bytes: await pdf.save(),
-      filename: 'Budget_Report.pdf',
-    );
-  }
-
-  pw.Widget _buildPdfRow(String title, String value, {bool isBold = false}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 6),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(
-            title,
-            style: pw.TextStyle(
-              fontSize: 16,
-              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-            ),
-          ),
-          pw.Text(
-            value,
-            style: pw.TextStyle(
-              fontSize: 16,
-              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -232,12 +49,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
       symbol: '${provider.currencySymbol} ',
       decimalDigits: 0,
     );
-    final isSafe = provider.realRemainingBalance > 0;
 
     return SingleChildScrollView(
-      // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + kToolbarHeight - 30,
+        top: MediaQuery.of(context).padding.top,
         left: 16,
         right: 16,
         bottom: 20,
@@ -245,69 +60,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. THE MAIN ALLOWANCE CARD
-          Container(
-            padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isSafe
-                    ? [const Color(0xFF34C759), const Color(0xFF28A745)]
-                    : [const Color(0xFFFF3B30), const Color(0xFFD70015)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: (isSafe ? Colors.green : Colors.red).withOpacity(0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  isSafe
-                      ? CupertinoIcons.checkmark_shield_fill
-                      : CupertinoIcons.exclamationmark_triangle_fill,
-                  color: Colors.white.withOpacity(0.8),
-                  size: 40,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  provider.t(isSafe ? 'You can safely spend' : 'Overspent!'),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ObscurableAmount(
-                  amountText: format.format(provider.safeDailyLimit),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  provider.t('per day'),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fade().scale(curve: Curves.easeOutBack, duration: 600.ms),
+          // 1. EXTRACTED UI COMPONENT
+          DailyAllowanceCard(provider: provider),
 
           const SizedBox(height: 35),
 
-          // 2. SAVINGS GOAL
+          // 2. SAVINGS INPUT
           Padding(
             padding: const EdgeInsets.only(left: 8, bottom: 8),
             child: Text(
@@ -370,12 +128,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         ),
                       ),
                     ),
-                    onChanged: (val) {
-                      provider.updateSavings(
-                        double.tryParse(val) ?? 0,
-                        provider.isSavingsPercentage,
-                      );
-                    },
+                    onChanged: (val) => provider.updateSavings(
+                      double.tryParse(val) ?? 0,
+                      provider.isSavingsPercentage,
+                    ),
                   ),
                 ),
               ],
@@ -384,7 +140,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           const SizedBox(height: 35),
 
-          // 3. THE MATH BREAKDOWN
+          // 3. MATH BREAKDOWN USING EXTRACTED WIDGETS
           Padding(
             padding: const EdgeInsets.only(left: 8, bottom: 8),
             child: Text(
@@ -406,76 +162,50 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             child: Column(
               children: [
-                if (provider.realRollover != 0) ...[
-                  _buildMathRow(
-                    context,
-                    provider.t('Rollover Balance'),
-                    format.format(provider.realRollover),
-                    CupertinoIcons.arrow_turn_down_right,
-                    Colors.indigo,
-                  ),
-                  const Divider(height: 0, indent: 56),
-                ],
-                _buildMathRow(
-                  context,
-                  provider.t('Income'),
-                  '+ ${format.format(provider.realCurrentMonthIncome)}',
-                  CupertinoIcons.arrow_down_left_circle_fill,
-                  Colors.green,
+                MathRow(
+                  title: provider.t('Income'),
+                  value: format.format(provider.realCurrentMonthIncome),
+                  icon: CupertinoIcons.arrow_down_left_circle_fill,
+                  iconColor: Colors.green,
                 ),
                 const Divider(height: 0, indent: 56),
-                if (provider.realRollover != 0) ...[
-                  _buildMathRow(
-                    context,
-                    provider.t('Total Available'),
-                    format.format(provider.totalAvailableFunds),
-                    CupertinoIcons.sum,
-                    Colors.blueGrey,
-                  ),
-                  const Divider(height: 0, indent: 56),
-                ],
-                _buildMathRow(
-                  context,
-                  provider.t('Locked Savings'),
-                  '- ${format.format(provider.lockedSavings)}',
-                  CupertinoIcons.lock_fill,
-                  Colors.blue,
+                MathRow(
+                  title: provider.t('Locked Savings'),
+                  value: '- ${format.format(provider.lockedSavings)}',
+                  icon: CupertinoIcons.lock_fill,
+                  iconColor: Colors.blue,
                 ),
                 const Divider(height: 0, indent: 56),
-                _buildMathRow(
-                  context,
-                  provider.t('Spendable Income'),
-                  format.format(provider.spendableIncome),
-                  CupertinoIcons.money_dollar_circle,
-                  Colors.orange,
+                MathRow(
+                  title: provider.t('Spendable Income'),
+                  value: format.format(provider.spendableIncome),
+                  icon: CupertinoIcons.money_dollar_circle,
+                  iconColor: Colors.orange,
                 ),
                 const Divider(height: 0, indent: 56),
-                _buildMathRow(
-                  context,
-                  provider.t('Expense'),
-                  '- ${format.format(provider.realCurrentMonthExpense)}',
-                  CupertinoIcons.arrow_up_right_circle_fill,
-                  Colors.red,
+                MathRow(
+                  title: provider.t('Expense'),
+                  value: '- ${format.format(provider.realCurrentMonthExpense)}',
+                  icon: CupertinoIcons.arrow_up_right_circle_fill,
+                  iconColor: Colors.red,
                 ),
                 const Divider(height: 0, indent: 56),
-                _buildMathRow(
-                  context,
-                  provider.t('Remaining Balance'),
-                  format.format(provider.realRemainingBalance),
-                  CupertinoIcons.checkmark_seal_fill,
-                  Colors.teal,
+                MathRow(
+                  title: provider.t('Remaining Balance'),
+                  value: format.format(provider.realRemainingBalance),
+                  icon: CupertinoIcons.checkmark_seal_fill,
+                  iconColor: Colors.teal,
                 ),
                 const Divider(height: 0, indent: 56),
-                _buildMathRow(
-                  context,
-                  provider.t('Today Spent'),
-                  format.format(provider.todayExpense),
-                  CupertinoIcons.cart_fill,
-                  Colors.pink,
+                MathRow(
+                  title: provider.t('Today Spent'),
+                  value: format.format(provider.todayExpense),
+                  icon: CupertinoIcons.cart_fill,
+                  iconColor: Colors.pink,
                 ),
                 const Divider(height: 0, indent: 56),
 
-                // NEW: EDITABLE REMAINING DAYS ROW!
+                // EDITABLE REMAINING DAYS
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(6),
@@ -502,26 +232,27 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       controller: _daysController,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.right,
-                      placeholder:
-                          '${provider.effectiveRemainingDays}', // Shows real days if empty!
+                      placeholder: '${provider.effectiveRemainingDays}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey,
                       ),
                       onChanged: (val) {
-                        int? days = int.tryParse(val);
-                        if (days != null && days > 31) {
-                          days = 31;
-                          _daysController.text = '31';
-                          _daysController.selection =
-                              TextSelection.fromPosition(
-                                const TextPosition(offset: 2),
-                              );
+                        if (val.isEmpty) {
+                          provider.updateCustomRemainingDays(null);
+                        } else {
+                          int? days = int.tryParse(val);
+                          if (days != null && days > 31) {
+                            days = 31;
+                            _daysController.text = '31';
+                            _daysController.selection =
+                                TextSelection.fromPosition(
+                                  const TextPosition(offset: 2),
+                                );
+                          }
+                          provider.updateCustomRemainingDays(days);
                         }
-                        provider.updateCustomRemainingDays(
-                          days,
-                        ); // Instantly updates math!
                       },
                     ),
                   ),
@@ -532,9 +263,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           const SizedBox(height: 30),
 
-          // 4. EXPORT PDF
+          // 4. EXPORT USING SERVICE
           ElevatedButton.icon(
-            onPressed: () => _exportToPDF(provider, provider.currencySymbol),
+            onPressed: () => PdfService.exportBudgetReport(provider),
             icon: const Icon(CupertinoIcons.doc_text_fill),
             label: Text(
               provider.t('Export PDF'),
@@ -552,37 +283,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           const SizedBox(height: 20),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMathRow(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color iconColor,
-  ) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: iconColor, size: 20),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-      ),
-      trailing: ObscurableAmount(
-        amountText: value,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
       ),
     );
   }

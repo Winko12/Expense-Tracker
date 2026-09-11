@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../models/transaction.dart';
 import '../providers/expense_provider.dart';
-import '../widgets/ios_form_elements.dart'; // IMPORT EXTRACTED WIDGETS!
+import '../widgets/common/ios_form_elements.dart'; // IMPORT EXTRACTED WIDGETS!
 
 class AddTransactionScreen extends StatefulWidget {
   final Transaction? existingTransaction;
