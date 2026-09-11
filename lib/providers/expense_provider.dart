@@ -13,8 +13,11 @@ class ExpenseProvider extends ChangeNotifier {
   String _currencySymbol = 'Ks';
   double _savingsValue = 20.0;
   bool _isSavingsPercentage = true;
-  int? _customRemainingDays;
-  int? get customRemainingDays => _customRemainingDays;
+  // int? _customRemainingDays;
+  // int? get customRemainingDays => _customRemainingDays;
+  // NEW: Save the target date instead of a static number!
+  DateTime? _customTargetDate;
+  bool get hasCustomDays => _customTargetDate != null; // Helper for UI
 
   bool get isBurmese => _isBurmese;
   String get currencySymbol => _currencySymbol;
@@ -31,15 +34,20 @@ class ExpenseProvider extends ChangeNotifier {
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
     _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
-    _currencySymbol = settingsBox.get('currencySymbol', defaultValue: 'Ks');
+    _currencySymbol = settingsBox.get(
+      'currencySymbol',
+      defaultValue: 'Ks',
+    ); // Kept your default 'Ks'
     _savingsValue = settingsBox.get('savingsValue', defaultValue: 20.0);
-    // NEW: Load saved Custom Days!
-    _customRemainingDays = settingsBox.get('customRemainingDays');
     _isSavingsPercentage = settingsBox.get(
       'isSavingsPercentage',
       defaultValue: true,
     );
 
+    _reminderHour = settingsBox.get('reminderHour', defaultValue: 20);
+    _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
+
+    // 1. Load saved Stats Date Range
     int? startMs = settingsBox.get('statsStartDate');
     int? endMs = settingsBox.get('statsEndDate');
     if (startMs != null && endMs != null) {
@@ -49,23 +57,41 @@ class ExpenseProvider extends ChangeNotifier {
       );
     }
 
-    // Load reminder time
-    _reminderHour = settingsBox.get('reminderHour', defaultValue: 20);
-    _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
+    // 2. THE FIX: Load the custom target date (Instead of the old _customRemainingDays)
+    int? targetMs = settingsBox.get('customTargetDateMs');
+    if (targetMs != null) {
+      _customTargetDate = DateTime.fromMillisecondsSinceEpoch(targetMs);
+      DateTime today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
+
+      // If the target date has passed, clear it out!
+      if (_customTargetDate!.isBefore(today) ||
+          _customTargetDate!.isAtSameMomentAs(today)) {
+        _customTargetDate = null;
+        settingsBox.delete('customTargetDateMs');
+      }
+    }
   }
 
   // NEW: Update Custom Days (Caps at 31)
   void updateCustomRemainingDays(int? days) {
-    if (days != null && days > 31) days = 31;
-    _customRemainingDays = days;
-
-    // NEW: Save to memory!
-    if (days == null) {
-      Hive.box('settingsBox').delete('customRemainingDays');
+    if (days == null || days <= 0) {
+      _customTargetDate = null;
+      Hive.box('settingsBox').delete('customTargetDateMs');
     } else {
-      Hive.box('settingsBox').put('customRemainingDays', days);
-    }
+      if (days > 31) days = 31; // Cap at 31
+      DateTime now = DateTime.now();
+      DateTime today = DateTime(now.year, now.month, now.day);
 
+      // The Target Date is exactly 'N' days from today
+      _customTargetDate = today.add(Duration(days: days));
+      Hive.box(
+        'settingsBox',
+      ).put('customTargetDateMs', _customTargetDate!.millisecondsSinceEpoch);
+    }
     notifyListeners();
   }
 
@@ -363,10 +389,15 @@ class ExpenseProvider extends ChangeNotifier {
   // 4. How many days are left in this month? (Including today)
   // REPLACED: Now checks if you typed a custom number first!
   int get effectiveRemainingDays {
-    if (_customRemainingDays != null && _customRemainingDays! > 0) {
-      return _customRemainingDays!;
-    }
     DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
+
+    if (_customTargetDate != null) {
+      int daysLeft = _customTargetDate!.difference(today).inDays;
+      if (daysLeft > 0) return daysLeft;
+    }
+
+    // Default fallback: Days left in the current real month
     int totalDays = DateTime(now.year, now.month + 1, 0).day;
     return totalDays - now.day + 1;
   }

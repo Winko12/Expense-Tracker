@@ -119,7 +119,7 @@ class _MainScreenState extends State<MainScreen> {
               label: provider.t('Budget'),
             ),
             NavigationDestination(
-              icon: const Icon(CupertinoIcons.settings),
+              icon: const Icon(CupertinoIcons.gear_alt),
               selectedIcon: const Icon(CupertinoIcons.gear_alt_fill),
               label: provider.t('Settings'),
             ),

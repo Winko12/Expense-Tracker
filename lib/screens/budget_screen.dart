@@ -65,8 +65,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     // NEW: Load custom days if they exist
     _daysController = TextEditingController(
-      text: provider.customRemainingDays != null
-          ? provider.customRemainingDays.toString()
+      text: provider.hasCustomDays
+          ? provider.effectiveRemainingDays.toString()
           : '',
     );
   }
