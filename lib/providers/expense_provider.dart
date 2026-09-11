@@ -166,6 +166,7 @@ class ExpenseProvider extends ChangeNotifier {
       'Total Available': 'စုစုပေါင်းရရှိနိုင်သောငွေ',
       'Net Balance': 'အသားတင် လက်ကျန်ငွေ',
       'Day Expense': 'တစ်ရက်တာ သုံးစရိတ်',
+      'Search Results': 'ရှာဖွေမှု ရလဒ်များ',
     };
     return myDict[enText] ?? enText;
   }
@@ -219,6 +220,17 @@ class ExpenseProvider extends ChangeNotifier {
       .fold(0.0, (sum, tx) => sum + tx.amount);
 
   double get monthlyBalance => monthlyIncome - monthlyExpense;
+
+  // NEW: Calculates the exact Income and Expense of the Search Results!
+  double get searchTotalIncome => filteredTransactions
+      .where((tx) => !tx.isExpense)
+      .fold(0.0, (sum, tx) => sum + tx.amount);
+  double get searchTotalExpense => filteredTransactions
+      .where((tx) => tx.isExpense)
+      .fold(0.0, (sum, tx) => sum + tx.amount);
+
+  // This will show a negative number if the search is mostly expenses (like searching "Food")
+  double get searchNetBalance => searchTotalIncome - searchTotalExpense;
 
   double _calculateRollover(DateTime targetMonth) {
     DateTime firstDayOfTarget = DateTime(

@@ -1,12 +1,14 @@
+import 'dart:ui'; // NEW: Required for ImageFilter (Blur)
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
 import 'add_transaction_screen.dart';
-import 'budget_screen.dart'; // NEW
+import 'budget_screen.dart';
 import 'home_screen.dart';
-import 'settings_screen.dart'; // NEW
+import 'settings_screen.dart';
 import 'stats_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -19,7 +21,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // 1. We now have 4 separate pages!
   final List<Widget> _screens = [
     const HomeScreen(),
     const StatsScreen(),
@@ -30,78 +31,98 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Determine title based on selected tab
     String appBarTitle = provider.t('Dashboard');
     if (_currentIndex == 1) appBarTitle = provider.t('Stats');
     if (_currentIndex == 2) appBarTitle = provider.t('Budget');
     if (_currentIndex == 3) appBarTitle = provider.t('Settings');
 
-    final safeIndex = _currentIndex < _screens.length ? _currentIndex : 0;
-
-    return Scaffold(
-      appBar: _currentIndex == 0
-          ? null
-          : AppBar(
-              title: Text(
-                appBarTitle,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+    // 1. WRAP THE ENTIRE APP IN YOUR GRADIENT BACKGROUND
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [const Color(0xFF0F172A), const Color(0xFF000000)]
+              : [const Color(0xFFEBF4FF), const Color(0xFFFFFFFF)],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Let gradient shine through!
+        extendBodyBehindAppBar:
+            true, // MAGIC: Allows content to scroll UNDER the AppBar!
+        // 2. YOUR GLASSMORPHISM APP BAR FOR STATS, BUDGET, SETTINGS!
+        appBar: _currentIndex == 0
+            ? null
+            : AppBar(
+                title: Text(
+                  appBarTitle,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                flexibleSpace: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+                    child: Container(
+                      color: isDark
+                          ? const Color(0xFF0F172A).withValues(alpha: 0.7)
+                          : const Color(0xFFEBF4FF).withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
               ),
-              elevation: 0,
-              // 2. We completely removed the cluttered App Bar actions! Everything is in Settings now.
-            ),
-      body: _screens[safeIndex],
 
-      // Floating button disappears on Settings tab to look cleaner
-      floatingActionButton: _currentIndex != 3
-          ? FloatingActionButton(
-              onPressed: () {
-                // THIS IS THE iOS MAGIC ANIMATION!
-                Navigator.push(
+        // We add extra top padding here so content doesn't get permanently stuck under the glass bar
+        body: Padding(
+          padding: EdgeInsets.only(top: _currentIndex == 0 ? 0 : 100),
+          child: _screens[_currentIndex],
+        ),
+
+        floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
+            ? FloatingActionButton(
+                onPressed: () => Navigator.push(
                   context,
                   CupertinoPageRoute(
-                    fullscreenDialog:
-                        true, // Makes it slide up from the bottom!
+                    fullscreenDialog: true,
                     builder: (context) => const AddTransactionScreen(),
                   ),
-                );
-              },
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              child: const Icon(CupertinoIcons.add),
-            )
-          : null,
+                ),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                child: const Icon(CupertinoIcons.add),
+              )
+            : null,
 
-      // 3. Updated Bottom Navigation Bar with 3 tabs
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (int index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(CupertinoIcons.home),
-            selectedIcon: const Icon(CupertinoIcons.house_fill),
-            label: provider.t('Home'),
-          ),
-          NavigationDestination(
-            icon: const Icon(CupertinoIcons.chart_pie),
-            selectedIcon: const Icon(CupertinoIcons.chart_pie_fill),
-            label: provider.t('Stats'),
-          ),
-          NavigationDestination(
-            icon: const Icon(CupertinoIcons.creditcard),
-            selectedIcon: const Icon(CupertinoIcons.creditcard_fill),
-            label: provider.t('Budget'),
-          ),
-          NavigationDestination(
-            icon: const Icon(CupertinoIcons.gear),
-            selectedIcon: const Icon(CupertinoIcons.gear_alt_fill),
-            label: provider.t('Settings'),
-          ),
-        ],
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (int index) =>
+              setState(() => _currentIndex = index),
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(CupertinoIcons.home),
+              selectedIcon: const Icon(CupertinoIcons.house_fill),
+              label: provider.t('Home'),
+            ),
+            NavigationDestination(
+              icon: const Icon(CupertinoIcons.chart_pie),
+              selectedIcon: const Icon(CupertinoIcons.chart_pie_fill),
+              label: provider.t('Stats'),
+            ),
+            NavigationDestination(
+              icon: const Icon(CupertinoIcons.creditcard),
+              selectedIcon: const Icon(CupertinoIcons.creditcard_fill),
+              label: provider.t('Budget'),
+            ),
+            NavigationDestination(
+              icon: const Icon(CupertinoIcons.settings),
+              selectedIcon: const Icon(CupertinoIcons.gear_alt_fill),
+              label: provider.t('Settings'),
+            ),
+          ],
+        ),
       ),
     );
   }

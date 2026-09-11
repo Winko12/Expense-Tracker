@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -51,6 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Consumer<ExpenseProvider>(
       builder: (context, provider, child) {
         final format = NumberFormat.currency(
@@ -62,21 +66,72 @@ class _HomeScreenState extends State<HomeScreen> {
             ? DateFormat('MMM dd, yyyy').format(provider.selectedDay!)
             : DateFormat('MMMM yyyy').format(provider.selectedMonth);
 
+        // ==========================================
+        // DYNAMIC HEADER LOGIC
+        // ==========================================
+        String headerTitle;
+        double headerAmount;
+        bool hidePills = false;
+        double pillIncome = provider.monthlyIncome;
+        double pillExpense = provider.monthlyExpense;
+
+        if (provider.searchQuery.isNotEmpty) {
+          // 1. IF SEARCHING: Show search math!
+          headerTitle = provider.t('Search Results');
+          headerAmount = provider
+              .searchNetBalance; // Will automatically show '-' if mostly expenses!
+          pillIncome = provider.searchTotalIncome;
+          pillExpense = provider.searchTotalExpense;
+          hidePills = false; // Show pills so they see search breakdown
+        } else if (provider.selectedDay != null) {
+          // 2. IF DAY PICKED: Show day math!
+          headerTitle = provider.t('Day Expense');
+          headerAmount = provider.selectedDayExpense;
+          hidePills = true; // Hide pills for day view
+        } else {
+          // 3. DEFAULT: Show spendable balance and monthly pills!
+          headerTitle = provider.t('Available Balance');
+          headerAmount = provider.filteredSpendableBalance;
+          hidePills = false;
+        }
+
+        // WRAP ENTIRE SCREEN IN A BEAUTIFUL PALE GRADIENT!
         return CustomScrollView(
           controller: _scrollController,
           slivers: [
             // ==========================================
-            // 1. SMART MORPHING APP BAR (NOW WITH ARROWS)
+            // 1. SMART MORPHING APP BAR
             // ==========================================
             SliverAppBar(
               pinned: true,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              backgroundColor: Colors.transparent,
+
+              // Let the gradient shine through!
               elevation: 0,
+              flexibleSpace: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: 25.0,
+                    sigmaY: 25.0,
+                  ), // Adjust blur intensity
+                  child: Container(
+                    // Tint the glass container differently based on dark/light mode
+                    color: isDark
+                        ? const Color(0xFF0F172A).withValues(
+                            alpha: 0.7,
+                          ) // Matches your dark slate gradient top
+                        : const Color(0xFFEBF4FF).withValues(
+                            alpha: 0.6,
+                          ), // Matches your light ice-blue gradient top
+                  ),
+                ),
+              ),
               title: _isSearching
                   ? Autocomplete<String>(
                       optionsBuilder: (TextEditingValue textEditingValue) {
-                        if (textEditingValue.text.isEmpty)
+                        if (textEditingValue.text.isEmpty) {
                           return const Iterable<String>.empty();
+                        }
                         return provider.searchSuggestions.where(
                           (option) => option.toLowerCase().contains(
                             textEditingValue.text.toLowerCase(),
@@ -102,18 +157,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[200],
+                                color: isDark ? Colors.grey[800] : Colors.white,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               onChanged: (val) => provider.search(val),
                             );
                           },
                     )
-                  // NEW: ADDED THE < AND > ARROWS HERE!
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -131,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         GestureDetector(
                           onTap: () async {
                             if (provider.selectedDay != null) {
-                              provider.pickDay(null); // Reset day
+                              provider.pickDay(null);
                             } else {
                               final picked = await showDatePicker(
                                 context: context,
@@ -192,18 +242,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // ==========================================
-            // 2. DYNAMIC BALANCE HEADER (Animates based on day selection)
+            // 2. DYNAMIC BALANCE HEADER
             // ==========================================
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
-                    // Title changes based on if a Day is picked!
                     Text(
-                      provider.selectedDay != null
-                          ? provider.t('Day Expense')
-                          : provider.t('Available Balance'),
+                      headerTitle,
                       style: const TextStyle(
                         color: Colors.grey,
                         fontSize: 14,
@@ -211,13 +258,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Amount changes based on if a Day is picked!
+                    // If net balance is negative, format.format automatically adds a minus sign!
                     Text(
-                      format.format(
-                        provider.selectedDay != null
-                            ? provider.selectedDayExpense
-                            : provider.filteredSpendableBalance,
-                      ),
+                      format.format(headerAmount),
                       style: TextStyle(
                         fontSize: 42,
                         fontWeight: FontWeight.bold,
@@ -225,15 +268,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
-                    // NEW: AnimatedSize smoothly collapses the pills when a day is picked!
                     AnimatedSize(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
-                      child: provider.selectedDay != null
-                          ? const SizedBox(
-                              width: double.infinity,
-                              height: 0,
-                            ) // Disappears!
+                      child: hidePills
+                          ? const SizedBox(width: double.infinity, height: 0)
                           : Padding(
                               padding: const EdgeInsets.only(top: 16),
                               child: Row(
@@ -246,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: CupertinoColors.activeGreen
-                                          .withValues(alpha: 0.1),
+                                          .withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Row(
@@ -258,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          format.format(provider.monthlyIncome),
+                                          format.format(pillIncome),
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
@@ -276,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: CupertinoColors.destructiveRed
-                                          .withValues(alpha: 0.1),
+                                          .withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Row(
@@ -288,9 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          format.format(
-                                            provider.monthlyExpense,
-                                          ),
+                                          format.format(pillExpense),
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
@@ -328,11 +365,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      if (index == provider.paginatedTransactions.length)
+                      if (index == provider.paginatedTransactions.length) {
                         return const Padding(
                           padding: EdgeInsets.all(20.0),
                           child: Center(child: CupertinoActivityIndicator()),
                         );
+                      }
                       return TransactionTile(
                         tx: provider.paginatedTransactions[index],
                         provider: provider,
