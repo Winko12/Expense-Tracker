@@ -48,6 +48,7 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.light,
         colorSchemeSeed: Colors.green, // A nice financial green accent
         useMaterial3: true,
+        fontFamily: "SFPro",
         // Force iOS sliding page transitions on all platforms
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
