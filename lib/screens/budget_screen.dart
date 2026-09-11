@@ -52,7 +52,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top,
+        top: MediaQuery.of(context).padding.top + 20,
         left: 16,
         right: 16,
         bottom: 20,
@@ -169,6 +169,24 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   iconColor: Colors.green,
                 ),
                 const Divider(height: 0, indent: 56),
+                if (provider.realRollover != 0) ...[
+                  MathRow(
+                    title: provider.t('Rollover Balance'),
+                    value: format.format(provider.realRollover),
+                    icon: CupertinoIcons.arrow_turn_down_right,
+                    iconColor: Colors.indigo,
+                  ),
+                  const Divider(height: 0, indent: 56),
+                ],
+                if (provider.realRollover != 0) ...[
+                  MathRow(
+                    title: provider.t('Total Available'),
+                    value: format.format(provider.totalAvailableFunds),
+                    icon: CupertinoIcons.sum,
+                    iconColor: Colors.blueGrey,
+                  ),
+                  const Divider(height: 0, indent: 56),
+                ],
                 MathRow(
                   title: provider.t('Locked Savings'),
                   value: '- ${format.format(provider.lockedSavings)}',

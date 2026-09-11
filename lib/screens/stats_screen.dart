@@ -150,26 +150,6 @@ class _StatsScreenState extends State<StatsScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                 child: Column(
                   children: [
-                    // Row(
-                    //   children: [
-                    //     Expanded(
-                    //       child: _buildGradientStatCard(
-                    //         provider.t('Income'),
-                    //         provider.statsTotalIncome,
-                    //         const [Color(0xFF34C759), Color(0xFF28A745)],
-                    //       ),
-                    //     ),
-                    //     const SizedBox(width: 15),
-                    //     Expanded(
-                    //       child: _buildGradientStatCard(
-                    //         provider.t('Expense'),
-                    //         provider.statsTotalExpense,
-                    //         const [Color(0xFFFF3B30), Color(0xFFD70015)],
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ).animate().fade(delay: 100.ms),
-                    // const SizedBox(height: 30),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(4),
@@ -368,54 +348,4 @@ class _StatsScreenState extends State<StatsScreen> {
       },
     );
   }
-
-  // Widget _buildGradientStatCard(
-  //   String title,
-  //   double amount,
-  //   List<Color> colors,
-  // ) {
-  //   return Container(
-  //     padding: const EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       gradient: LinearGradient(
-  //         colors: colors,
-  //         begin: Alignment.topLeft,
-  //         end: Alignment.bottomRight,
-  //       ),
-  //       borderRadius: BorderRadius.circular(20),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: colors[0].withOpacity(0.3),
-  //           blurRadius: 15,
-  //           offset: const Offset(0, 8),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Text(
-  //           title,
-  //           style: TextStyle(
-  //             color: Colors.white.withOpacity(0.8),
-  //             fontSize: 13,
-  //             fontWeight: FontWeight.w500,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 8),
-  //         Text(
-  //           NumberFormat.currency(
-  //             symbol: '\$',
-  //             decimalDigits: 0,
-  //           ).format(amount),
-  //           style: const TextStyle(
-  //             fontSize: 22,
-  //             fontWeight: FontWeight.bold,
-  //             color: Colors.white,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 }
