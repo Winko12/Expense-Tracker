@@ -166,7 +166,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           ],
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+          // padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top - 20,
+            left: 16.0,
+            right: 16.0,
+            bottom: 0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

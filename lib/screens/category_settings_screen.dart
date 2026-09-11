@@ -120,104 +120,106 @@ class _CategorySettingsScreenState extends State<CategorySettingsScreen> {
             ),
           ],
         ),
-        body: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              child: CupertinoSlidingSegmentedControl<bool>(
-                groupValue: _isExpense,
-                children: {
-                  true: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(provider.t('Expense')),
-                  ),
-                  false: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(provider.t('Income')),
-                  ),
-                },
-                onValueChanged: (val) => setState(() => _isExpense = val!),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: displayedCategories.length,
-                itemBuilder: (context, index) {
-                  final cat = displayedCategories[index];
-                  return Dismissible(
-                    key: Key(cat.id),
-                    direction: DismissDirection.endToStart,
-                    confirmDismiss: (direction) async {
-                      return await showCupertinoDialog<bool>(
-                        context: context,
-                        builder: (ctx) => CupertinoAlertDialog(
-                          title: Text(provider.t('Are you sure?')),
-                          content: Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              provider.t('This action cannot be undone.'),
-                            ),
-                          ),
-                          actions: [
-                            CupertinoDialogAction(
-                              child: Text(provider.t('Cancel')),
-                              onPressed: () => Navigator.pop(ctx, false),
-                            ),
-                            CupertinoDialogAction(
-                              isDestructiveAction: true,
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: Text(provider.t('Delete')),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    background: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.destructiveRed,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      child: const Icon(
-                        CupertinoIcons.trash,
-                        color: Colors.white,
-                      ),
+        // CHANGED: From Column to ListView so the ENTIRE page scrolls under the glass!
+        body: ListView.builder(
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top - 20,
+            left: 16,
+            right: 16,
+            bottom: 20,
+          ),
+          itemCount:
+              displayedCategories.length +
+              1, // +1 for the toggle switch at the top
+          itemBuilder: (context, index) {
+            // 1. The Toggle Switch (First Item)
+            if (index == 0) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                width: double.infinity,
+                child: CupertinoSlidingSegmentedControl<bool>(
+                  groupValue: _isExpense,
+                  children: {
+                    true: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(provider.t('Expense')),
                     ),
-                    onDismissed: (_) => provider.deleteCategory(cat),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF1C1C1E)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          cat.name,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        trailing: const Icon(
-                          CupertinoIcons.pencil,
-                          color: Colors.grey,
-                          size: 20,
-                        ),
-                        onTap: () => _showCategoryDialog(
-                          context,
-                          provider,
-                          existingCategory: cat,
-                        ),
-                      ),
+                    false: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(provider.t('Income')),
                     ),
-                  ).animate().fade().slideX();
-                },
+                  },
+                  onValueChanged: (val) => setState(() => _isExpense = val!),
+                ),
+              );
+            }
+
+            // 2. The Categories (Rest of the Items)
+            final cat = displayedCategories[index - 1];
+            return Dismissible(
+              key: Key(cat.id),
+              direction: DismissDirection.endToStart,
+              confirmDismiss: (direction) async {
+                return await showCupertinoDialog<bool>(
+                  context: context,
+                  builder: (ctx) => CupertinoAlertDialog(
+                    title: Text(provider.t('Are you sure?')),
+                    content: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(provider.t('This action cannot be undone.')),
+                    ),
+                    actions: [
+                      CupertinoDialogAction(
+                        child: Text(provider.t('Cancel')),
+                        onPressed: () => Navigator.pop(ctx, false),
+                      ),
+                      CupertinoDialogAction(
+                        isDestructiveAction: true,
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(provider.t('Delete')),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              background: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.destructiveRed,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                child: const Icon(CupertinoIcons.trash, color: Colors.white),
               ),
-            ),
-          ],
+              onDismissed: (_) => provider.deleteCategory(cat),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1C1C1E)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  title: Text(
+                    cat.name,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  trailing: const Icon(
+                    CupertinoIcons.pencil,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  onTap: () => _showCategoryDialog(
+                    context,
+                    provider,
+                    existingCategory: cat,
+                  ),
+                ),
+              ),
+            ).animate().fade().slideX();
+          },
         ),
       ),
     );

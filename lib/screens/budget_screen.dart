@@ -235,7 +235,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final isSafe = provider.realRemainingBalance > 0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight - 30,
+        left: 16,
+        right: 16,
+        bottom: 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -130,7 +130,13 @@ class SettingsScreen extends StatelessWidget {
         : Colors.white;
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight - 30,
+        left: 16,
+        right: 16,
+        bottom: 20,
+      ),
       children: [
         // GROUP 1: PREFERENCES
         Padding(

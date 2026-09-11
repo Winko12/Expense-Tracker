@@ -76,7 +76,13 @@ class _StatsScreenState extends State<StatsScreen> {
         }
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          // padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight - 30,
+            left: 20,
+            right: 20,
+            bottom: 0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

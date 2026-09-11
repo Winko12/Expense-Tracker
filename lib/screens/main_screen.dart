@@ -76,10 +76,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
 
         // We add extra top padding here so content doesn't get permanently stuck under the glass bar
-        body: Padding(
-          padding: EdgeInsets.only(top: _currentIndex == 0 ? 0 : 100),
-          child: _screens[_currentIndex],
-        ),
+        body: _screens[_currentIndex],
 
         floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
             ? FloatingActionButton(
