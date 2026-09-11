@@ -1,3 +1,5 @@
+import 'dart:ui'; // NEW: For Glassmorphism
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -23,7 +25,6 @@ class CategoryTransactionsScreen extends StatefulWidget {
 
 class _CategoryTransactionsScreenState
     extends State<CategoryTransactionsScreen> {
-  // NEW: Pagination Logic!
   final ScrollController _scrollController = ScrollController();
   int _limit = 15;
 
@@ -33,7 +34,7 @@ class _CategoryTransactionsScreenState
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 50) {
-        setState(() => _limit += 15); // Load 15 more when reaching bottom!
+        setState(() => _limit += 15);
       }
     });
   }
@@ -47,8 +48,8 @@ class _CategoryTransactionsScreenState
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Filter stats transactions to ONLY match this specific category
     final allFilteredTx = provider.statsTransactions
         .where(
           (tx) =>
@@ -60,43 +61,72 @@ class _CategoryTransactionsScreenState
     final hasMore = allFilteredTx.length > _limit;
     final displayedTx = allFilteredTx.take(_limit).toList();
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? Colors.black
-          : const Color(0xFFF2F2F7),
-      appBar: AppBar(
-        title: Text(
-          provider.t(widget.categoryName),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+    // 1. THE BEAUTIFUL PALE GRADIENT WRAPPER
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [const Color(0xFF0F172A), const Color(0xFF000000)]
+              : [const Color(0xFFEBF4FF), const Color(0xFFFFFFFF)],
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
-      body: displayedTx.isEmpty
-          ? Center(
-              child: Text(
-                provider.t('No transactions found.'),
-                style: const TextStyle(color: Colors.grey),
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Let gradient shine
+        extendBodyBehindAppBar: true, // Scroll under AppBar
+        // 2. GLASSMORPHISM APP BAR
+        appBar: AppBar(
+          title: Text(
+            provider.t(widget.categoryName),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+              child: Container(
+                color: isDark
+                    ? const Color(0xFF0F172A).withValues(alpha: 0.7)
+                    : const Color(0xFFEBF4FF).withValues(alpha: 0.6),
               ),
-            )
-          : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              itemCount: displayedTx.length + (hasMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == displayedTx.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Center(child: CupertinoActivityIndicator()),
-                  );
-                }
-                // ANIMATED TRANSACTION TILES!
-                return TransactionTile(
-                  tx: displayedTx[index],
-                  provider: provider,
-                ).animate().fade().slideX(begin: 0.05, end: 0);
-              },
             ),
+          ),
+        ),
+
+        // 3. THE LIST
+        body: displayedTx.isEmpty
+            ? Center(
+                child: Text(
+                  provider.t('No transactions found.'),
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              )
+            : ListView.builder(
+                controller: _scrollController,
+                // PUSH CONTENT DOWN BUT ALLOW SCROLLING UNDER GLASS
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
+                ),
+                itemCount: displayedTx.length + (hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == displayedTx.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Center(child: CupertinoActivityIndicator()),
+                    );
+                  }
+                  return TransactionTile(
+                    tx: displayedTx[index],
+                    provider: provider,
+                  ).animate().fade().slideX(begin: 0.05, end: 0);
+                },
+              ),
+      ),
     );
   }
 }

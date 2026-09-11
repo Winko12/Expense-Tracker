@@ -54,7 +54,7 @@ class _MainScreenState extends State<MainScreen> {
         extendBodyBehindAppBar:
             true, // MAGIC: Allows content to scroll UNDER the AppBar!
         // 2. YOUR GLASSMORPHISM APP BAR FOR STATS, BUDGET, SETTINGS!
-        appBar: _currentIndex == 0
+        appBar: (_currentIndex == 0 || _currentIndex == 1)
             ? null
             : AppBar(
                 title: Text(
@@ -76,7 +76,12 @@ class _MainScreenState extends State<MainScreen> {
               ),
 
         // We add extra top padding here so content doesn't get permanently stuck under the glass bar
-        body: _screens[_currentIndex],
+        body: Padding(
+          padding: EdgeInsets.only(
+            top: (_currentIndex == 0 || _currentIndex == 1) ? 0 : 0,
+          ),
+          child: _screens[_currentIndex],
+        ),
 
         floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
             ? FloatingActionButton(
