@@ -6,9 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../models/debt_item.dart';
 import '../providers/expense_provider.dart';
-import '../widgets/common/ios_form_elements.dart'; // We use our reusable inputs!
 
 class DebtsScreen extends StatefulWidget {
   const DebtsScreen({super.key});
@@ -20,115 +18,25 @@ class DebtsScreen extends StatefulWidget {
 class _DebtsScreenState extends State<DebtsScreen> {
   bool _showActive = true;
 
-  void _showAddDebtDialog(BuildContext context, ExpenseProvider provider) {
-    final nameController = TextEditingController();
-    final amountController = TextEditingController();
-    bool isOwedToMe = true;
+  // NEW: Pagination Variables
+  final ScrollController _scrollController = ScrollController();
+  int _limit = 15;
 
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            padding: EdgeInsets.only(
-              top: 20,
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF1C1C1E)
-                  : const Color(0xFFF2F2F7),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    provider.t('Add Debt'),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 50) {
+        setState(() => _limit += 15);
+      }
+    });
+  }
 
-                  // Toggle: Lent vs Borrowed
-                  CupertinoSlidingSegmentedControl<bool>(
-                    groupValue: isOwedToMe,
-                    children: {
-                      true: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          provider.t('Lent (They owe me)'),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      false: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          provider.t('Borrowed (I owe them)'),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    },
-                    onValueChanged: (val) =>
-                        setModalState(() => isOwedToMe = val!),
-                  ),
-                  const SizedBox(height: 20),
-
-                  IOSTextField(
-                    controller: nameController,
-                    placeholder: provider.t('Person Name'),
-                    icon: CupertinoIcons.person_fill,
-                  ),
-                  IOSTextField(
-                    controller: amountController,
-                    placeholder: provider.t('Amount'),
-                    icon: CupertinoIcons.money_dollar,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-                  CupertinoButton.filled(
-                    onPressed: () {
-                      final name = nameController.text.trim();
-                      final amount = double.tryParse(amountController.text);
-                      if (name.isNotEmpty && amount != null && amount > 0) {
-                        provider.addDebt(
-                          DebtItem(
-                            id: DateTime.now().millisecondsSinceEpoch
-                                .toString(),
-                            personName: name,
-                            amount: amount,
-                            date: DateTime.now(),
-                            isOwedToMe: isOwedToMe,
-                          ),
-                        );
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    child: const Text(
-                      'Save',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -140,13 +48,15 @@ class _DebtsScreenState extends State<DebtsScreen> {
       decimalDigits: 0,
     );
 
-    final displayList = _showActive
-        ? provider.activeDebts
-        : provider.settledDebts;
+    // Apply pagination
+    final fullList = _showActive ? provider.activeDebts : provider.settledDebts;
+    final hasMore = fullList.length > _limit;
+    final displayList = fullList.take(_limit).toList();
 
     return CustomScrollView(
+      controller: _scrollController,
       slivers: [
-        // 1. GLASSMORPHISM APP BAR
+        // 1. GLASSMORPHISM APP BAR (No + button here anymore!)
         SliverAppBar(
           pinned: true,
           backgroundColor: Colors.transparent,
@@ -165,12 +75,6 @@ class _DebtsScreenState extends State<DebtsScreen> {
             provider.t('Debts'),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(CupertinoIcons.add, color: Colors.blue),
-              onPressed: () => _showAddDebtDialog(context, provider),
-            ),
-          ],
         ),
 
         // 2. TOGGLE
@@ -195,13 +99,16 @@ class _DebtsScreenState extends State<DebtsScreen> {
                     child: Text(provider.t('Settled')),
                   ),
                 },
-                onValueChanged: (val) => setState(() => _showActive = val!),
+                onValueChanged: (val) => setState(() {
+                  _showActive = val!;
+                  _limit = 15; // Reset pagination when switching tabs
+                }),
               ),
             ),
           ),
         ),
 
-        // 3. DEBT LIST
+        // 3. PAGINATED & SWIPEABLE DEBT LIST
         if (displayList.isEmpty)
           SliverFillRemaining(
             child: Center(
@@ -216,6 +123,12 @@ class _DebtsScreenState extends State<DebtsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
+                if (index == displayList.length)
+                  return const Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Center(child: CupertinoActivityIndicator()),
+                  );
+
                 final debt = displayList[index];
                 final color = debt.isOwedToMe
                     ? CupertinoColors.activeGreen
@@ -224,29 +137,31 @@ class _DebtsScreenState extends State<DebtsScreen> {
                     ? CupertinoIcons.arrow_down_left_circle_fill
                     : CupertinoIcons.arrow_up_right_circle_fill;
 
+                // BI-DIRECTIONAL SWIPING!
                 return Dismissible(
                   key: Key(debt.id),
-                  direction: DismissDirection.endToStart,
-                  confirmDismiss: (direction) async {
-                    return await showCupertinoDialog<bool>(
-                      context: context,
-                      builder: (ctx) => CupertinoAlertDialog(
-                        title: Text(provider.t('Are you sure?')),
-                        actions: [
-                          CupertinoDialogAction(
-                            child: Text(provider.t('Cancel')),
-                            onPressed: () => Navigator.pop(ctx, false),
-                          ),
-                          CupertinoDialogAction(
-                            isDestructiveAction: true,
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text(provider.t('Delete')),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  direction:
+                      DismissDirection.horizontal, // Allow Swipe Left AND Right
+                  // SWIPE RIGHT: Settle / Unsettle
                   background: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.activeBlue,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 20),
+                    child: Icon(
+                      debt.isSettled
+                          ? CupertinoIcons.arrow_uturn_left
+                          : CupertinoIcons.checkmark_seal_fill,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+
+                  // SWIPE LEFT: Delete
+                  secondaryBackground: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: CupertinoColors.destructiveRed,
@@ -257,9 +172,71 @@ class _DebtsScreenState extends State<DebtsScreen> {
                     child: const Icon(
                       CupertinoIcons.trash,
                       color: Colors.white,
+                      size: 28,
                     ),
                   ),
-                  onDismissed: (_) => provider.deleteDebt(debt),
+
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.endToStart) {
+                      // DELETE CONFIRMATION
+                      final confirm = await showCupertinoDialog<bool>(
+                        context: context,
+                        builder: (ctx) => CupertinoAlertDialog(
+                          title: Text(provider.t('Are you sure?')),
+                          actions: [
+                            CupertinoDialogAction(
+                              child: Text(provider.t('Cancel')),
+                              onPressed: () => Navigator.pop(ctx, false),
+                            ),
+                            CupertinoDialogAction(
+                              isDestructiveAction: true,
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: Text(provider.t('Delete')),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) provider.deleteDebt(debt);
+                      return confirm;
+                    } else {
+                      // SETTLE / UNSETTLE CONFIRMATION
+                      final actionText = debt.isSettled
+                          ? provider.t('Unsettle')
+                          : provider.t('Settle');
+                      final confirm = await showCupertinoDialog<bool>(
+                        context: context,
+                        builder: (ctx) => CupertinoAlertDialog(
+                          title: Text('$actionText?'),
+                          actions: [
+                            CupertinoDialogAction(
+                              child: Text(provider.t('Cancel')),
+                              onPressed: () => Navigator.pop(ctx, false),
+                            ),
+                            CupertinoDialogAction(
+                              isDefaultAction: true,
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: Text(actionText),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        if (debt.isSettled) {
+                          provider.unsettleDebt(debt);
+                        } else {
+                          provider.settleDebt(debt);
+                          if (context.mounted)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(provider.t('Transaction saved!')),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                        }
+                      }
+                      return confirm;
+                    }
+                  },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
@@ -312,54 +289,21 @@ class _DebtsScreenState extends State<DebtsScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            if (!debt.isSettled)
-                              GestureDetector(
-                                onTap: () {
-                                  provider.settleDebt(debt);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Debt settled and added to ledger!',
-                                      ),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    provider.t('Settle'),
-                                    style: const TextStyle(
-                                      color: Colors.blue,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              Text(
-                                provider.t('Settled'),
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            Text(
+                              provider.t(debt.isSettled ? 'Settled' : 'Active'),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
                 ).animate().fade().slideX(begin: 0.05, end: 0);
-              }, childCount: displayList.length),
+              }, childCount: displayList.length + (hasMore ? 1 : 0)),
             ),
           ),
       ],

@@ -1,6 +1,7 @@
 import 'dart:ui'; // NEW: Required for ImageFilter (Blur)
 
 import 'package:expense_tracker/screens/debts_screen.dart';
+import 'package:expense_tracker/widgets/common/add_debt_bottom_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -57,7 +58,7 @@ class _MainScreenState extends State<MainScreen> {
         extendBodyBehindAppBar:
             true, // MAGIC: Allows content to scroll UNDER the AppBar!
         // 2. YOUR GLASSMORPHISM APP BAR FOR STATS, BUDGET, SETTINGS!
-        appBar: (_currentIndex == 0 || _currentIndex == 1)
+        appBar: (_currentIndex == 0 || _currentIndex == 1 || _currentIndex == 2)
             ? null
             : AppBar(
                 title: Text(
@@ -81,26 +82,50 @@ class _MainScreenState extends State<MainScreen> {
         // We add extra top padding here so content doesn't get permanently stuck under the glass bar
         body: Padding(
           padding: EdgeInsets.only(
-            top: (_currentIndex == 0 || _currentIndex == 1) ? 0 : 0,
+            top:
+                (_currentIndex == 0 || _currentIndex == 1 || _currentIndex == 2)
+                ? 0
+                : 0,
           ),
           child: _screens[_currentIndex],
         ),
 
-        floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
+        floatingActionButton:
+            (_currentIndex == 0 || _currentIndex == 1 || _currentIndex == 2)
             ? FloatingActionButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  CupertinoPageRoute(
-                    fullscreenDialog: true,
-                    builder: (context) => const AddTransactionScreen(),
-                  ),
-                ),
+                onPressed: () {
+                  if (_currentIndex == 2) {
+                    // If on Debts tab, open the Debt popup!
+                    showAddDebtBottomSheet(context, provider);
+                  } else {
+                    // Otherwise, open the normal Add Transaction screen!
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        fullscreenDialog: true,
+                        builder: (context) => const AddTransactionScreen(),
+                      ),
+                    );
+                  }
+                },
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 child: const Icon(CupertinoIcons.add),
               )
             : null,
 
+        //     onPressed: () => Navigator.push(
+        //       context,
+        //       CupertinoPageRoute(
+        //         fullscreenDialog: true,
+        //         builder: (context) => const AddTransactionScreen(),
+        //       ),
+        //     ),
+        //     backgroundColor: Theme.of(context).colorScheme.primary,
+        //     foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        //     child: const Icon(CupertinoIcons.add),
+        //   )
+        // : null,
         bottomNavigationBar: NavigationBar(
           selectedIndex: _currentIndex,
           onDestinationSelected: (int index) =>

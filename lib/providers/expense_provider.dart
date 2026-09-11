@@ -202,6 +202,8 @@ class ExpenseProvider extends ChangeNotifier {
       'Settle': 'ရှင်းလင်းမည်',
       'Settled': 'ရှင်းလင်းပြီး',
       'Active': 'လက်ရှိ',
+      'Unsettle': 'ပြန်လည်သက်ဝင်စေမည်', // Unsettle
+      'Mark as Active': 'လက်ရှိစာရင်းသို့ပြောင်းမည်', // Mark as Active
     };
     return myDict[enText] ?? enText;
   }
@@ -630,6 +632,13 @@ class ExpenseProvider extends ChangeNotifier {
 
   void deleteDebt(DebtItem debt) {
     debt.delete();
+    loadDebts();
+  }
+
+  // NEW: Move a debt back to Active!
+  void unsettleDebt(DebtItem debt) {
+    debt.isSettled = false;
+    debt.save();
     loadDebts();
   }
 }
