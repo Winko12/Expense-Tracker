@@ -1,3 +1,4 @@
+import 'package:expense_tracker/models/debt_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
@@ -17,10 +18,12 @@ void main() async {
   // 2. Register our Transaction Adapter (created by the generator)
   Hive.registerAdapter(TransactionAdapter());
   Hive.registerAdapter(CategoryItemAdapter());
+  Hive.registerAdapter(DebtItemAdapter());
 
   // 3. Open the box (like opening a specific table in a database)
   await Hive.openBox<Transaction>('transactionsBox');
   await Hive.openBox<CategoryItem>('categoriesBox');
+  await Hive.openBox<DebtItem>('debtsBox');
   await Hive.openBox('settingsBox');
 
   // Wrap the app in our Provider so it can manage state
@@ -28,7 +31,8 @@ void main() async {
     ChangeNotifierProvider(
       create: (context) => ExpenseProvider()
         ..loadTransactions()
-        ..loadCategories(),
+        ..loadCategories()
+        ..loadDebts(),
       child: const MyApp(),
     ),
   );

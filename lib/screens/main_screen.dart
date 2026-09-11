@@ -1,5 +1,6 @@
 import 'dart:ui'; // NEW: Required for ImageFilter (Blur)
 
+import 'package:expense_tracker/screens/debts_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const StatsScreen(),
+    const DebtsScreen(),
     const BudgetScreen(),
     const SettingsScreen(),
   ];
@@ -35,8 +37,9 @@ class _MainScreenState extends State<MainScreen> {
 
     String appBarTitle = provider.t('Dashboard');
     if (_currentIndex == 1) appBarTitle = provider.t('Stats');
-    if (_currentIndex == 2) appBarTitle = provider.t('Budget');
-    if (_currentIndex == 3) appBarTitle = provider.t('Settings');
+    if (_currentIndex == 2) appBarTitle = provider.t('Debts');
+    if (_currentIndex == 3) appBarTitle = provider.t('Budget');
+    if (_currentIndex == 4) appBarTitle = provider.t('Settings');
 
     // 1. WRAP THE ENTIRE APP IN YOUR GRADIENT BACKGROUND
     return Container(
@@ -112,6 +115,11 @@ class _MainScreenState extends State<MainScreen> {
               icon: const Icon(CupertinoIcons.chart_pie),
               selectedIcon: const Icon(CupertinoIcons.chart_pie_fill),
               label: provider.t('Stats'),
+            ),
+            NavigationDestination(
+              icon: const Icon(CupertinoIcons.person_2),
+              selectedIcon: const Icon(CupertinoIcons.person_2_fill),
+              label: provider.t('Debts'),
             ),
             NavigationDestination(
               icon: const Icon(CupertinoIcons.creditcard),

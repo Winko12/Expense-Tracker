@@ -1,4 +1,5 @@
 import 'package:expense_tracker/models/category_item.dart';
+import 'package:expense_tracker/models/debt_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -193,6 +194,14 @@ class ExpenseProvider extends ChangeNotifier {
       'Net Balance': 'အသားတင် လက်ကျန်ငွေ',
       'Day Expense': 'တစ်ရက်တာ သုံးစရိတ်',
       'Search Results': 'ရှာဖွေမှု ရလဒ်များ',
+      'Debts': 'အကြွေးစာရင်း',
+      'Lent (They owe me)': 'ချေးပေးထားသောငွေ (ရရန်ရှိ)',
+      'Borrowed (I owe them)': 'ချေးယူထားသောငွေ (ပေးရန်ရှိ)',
+      'Add Debt': 'အကြွေးမှတ်မည်',
+      'Person Name': 'နာမည်',
+      'Settle': 'ရှင်းလင်းမည်',
+      'Settled': 'ရှင်းလင်းပြီး',
+      'Active': 'လက်ရှိ',
     };
     return myDict[enText] ?? enText;
   }
@@ -575,5 +584,52 @@ class ExpenseProvider extends ChangeNotifier {
   void clearAllData() {
     Hive.box<Transaction>(_boxName).clear(); // Wipes the whole database
     loadTransactions(); // Refreshes the UI to show 0 balance
+  }
+
+  // ==========================================
+  // 7. DEBT TRACKER LOGIC
+  // ==========================================
+  List<DebtItem> _debts = [];
+  List<DebtItem> get activeDebts => _debts.where((d) => !d.isSettled).toList();
+  List<DebtItem> get settledDebts => _debts.where((d) => d.isSettled).toList();
+
+  void loadDebts() {
+    var box = Hive.box<DebtItem>('debtsBox');
+    _debts = box.values.toList();
+    _debts.sort((a, b) => b.date.compareTo(a.date));
+    notifyListeners();
+  }
+
+  void addDebt(DebtItem debt) {
+    Hive.box<DebtItem>('debtsBox').add(debt);
+    loadDebts();
+  }
+
+  // MAGIC: Settling a debt automatically generates a transaction!
+  void settleDebt(DebtItem debt) {
+    debt.isSettled = true;
+    debt.save();
+
+    // If they owed me, settling means I got my money back (Income).
+    // If I owed them, settling means I paid them back (Expense).
+    final tx = Transaction(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: debt.isOwedToMe
+          ? '${debt.personName} paid me back'
+          : 'I paid back ${debt.personName}',
+      amount: debt.amount,
+      date: DateTime.now(),
+      isExpense: !debt.isOwedToMe,
+      category: 'Other',
+      paymentMethod: 'Cash', // Defaults to cash, user can edit later
+    );
+
+    addTransaction(tx); // Add to the main ledger!
+    loadDebts();
+  }
+
+  void deleteDebt(DebtItem debt) {
+    debt.delete();
+    loadDebts();
   }
 }
