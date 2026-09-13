@@ -140,13 +140,14 @@ void showAddDebtBottomSheet(
                       final amount = double.tryParse(amountController.text);
                       if (name.isNotEmpty && amount != null && amount > 0) {
                         if (existingDebt != null) {
-                          // UPDATE EXISTING!
-                          existingDebt.personName = name;
-                          existingDebt.amount = amount;
-                          existingDebt.isOwedToMe = isOwedToMe;
-                          existingDebt.date = selectedDate;
-                          existingDebt.save();
-                          provider.loadDebts();
+                          // USE NEW UPDATE LOGIC TO SYNC WITH LEDGER!
+                          provider.updateDebt(
+                            existingDebt,
+                            name,
+                            amount,
+                            isOwedToMe,
+                            selectedDate,
+                          );
                         } else {
                           // CREATE NEW!
                           provider.addDebt(

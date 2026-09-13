@@ -208,6 +208,8 @@ class ExpenseProvider extends ChangeNotifier {
       'Owed to Me': 'ရရန်ရှိ',
       'I Owe': 'ပေးရန်ရှိ',
       'Delete Debt': 'အကြွေးဖျက်မည်',
+      'Lent to': 'ချေးပေးထားသည် -',
+      'Borrowed from': 'ချေးယူထားသည် -',
     };
     return myDict[enText] ?? enText;
   }
@@ -593,7 +595,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // ==========================================
-  // 7. DEBT TRACKER LOGIC
+  // 7. DEBT TRACKER LOGIC (Synced with Ledger!)
   // ==========================================
   List<DebtItem> _debts = [];
   List<DebtItem> get activeDebts => _debts.where((d) => !d.isSettled).toList();
@@ -606,8 +608,7 @@ class ExpenseProvider extends ChangeNotifier {
   double get activeIOwe => activeDebts
       .where((d) => !d.isOwedToMe)
       .fold(0.0, (sum, d) => sum + d.amount);
-  double get activeNetDebt =>
-      activeOwedToMe - activeIOwe; // Positive = People owe you more!
+  double get activeNetDebt => activeOwedToMe - activeIOwe;
 
   double get settledOwedToMe => settledDebts
       .where((d) => d.isOwedToMe)
@@ -624,43 +625,134 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 1. ADD DEBT -> Creates an initial transaction!
   void addDebt(DebtItem debt) {
     Hive.box<DebtItem>('debtsBox').add(debt);
+
+    final tx = Transaction(
+      id: 'debt_${debt.id}', // MAGIC: Linked ID!
+      title: debt.isOwedToMe
+          ? '${t('Lent to')} ${debt.personName}'
+          : '${t('Borrowed from')} ${debt.personName}',
+      amount: debt.amount,
+      date: debt.date,
+      isExpense: debt.isOwedToMe, // Lending = Expense, Borrowing = Income
+      category: 'Other',
+      paymentMethod: 'Cash',
+    );
+    addTransaction(tx);
     loadDebts();
   }
 
-  // MAGIC: Settling a debt automatically generates a transaction!
+  // 2. UPDATE DEBT -> Updates linked transactions!
+  void updateDebt(
+    DebtItem debt,
+    String newName,
+    double newAmount,
+    bool newIsOwedToMe,
+    DateTime newDate,
+  ) {
+    debt.personName = newName;
+    debt.amount = newAmount;
+    debt.isOwedToMe = newIsOwedToMe;
+    debt.date = newDate;
+    debt.save();
+
+    var txBox = Hive.box<Transaction>(_boxName);
+
+    // Update the Initial Debt Transaction
+    try {
+      var linkedTx = txBox.values.firstWhere(
+        (tx) => tx.id == 'debt_${debt.id}',
+      );
+      linkedTx.title = debt.isOwedToMe
+          ? '${t('Lent to')} ${debt.personName}'
+          : '${t('Borrowed from')} ${debt.personName}';
+      linkedTx.amount = debt.amount;
+      linkedTx.date = debt.date;
+      linkedTx.isExpense = debt.isOwedToMe;
+      linkedTx.save();
+    } catch (e) {
+      /* Transaction might have been manually deleted by user */
+    }
+
+    // Update the Settled Transaction if it exists
+    try {
+      var settledTx = txBox.values.firstWhere(
+        (tx) => tx.id == 'settle_${debt.id}',
+      );
+      settledTx.title = debt.isOwedToMe
+          ? '${debt.personName} paid me back'
+          : 'I paid back ${debt.personName}';
+      settledTx.amount = debt.amount;
+      settledTx.isExpense = !debt.isOwedToMe;
+      settledTx.save();
+    } catch (e) {}
+
+    loadDebts();
+    loadTransactions();
+  }
+
+  // 3. SETTLE DEBT -> Creates a counter-transaction!
   void settleDebt(DebtItem debt) {
     debt.isSettled = true;
     debt.save();
 
-    // If they owed me, settling means I got my money back (Income).
-    // If I owed them, settling means I paid them back (Expense).
     final tx = Transaction(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: 'settle_${debt.id}', // MAGIC: Linked Settle ID!
       title: debt.isOwedToMe
           ? '${debt.personName} paid me back'
           : 'I paid back ${debt.personName}',
       amount: debt.amount,
-      date: DateTime.now(),
-      isExpense: !debt.isOwedToMe,
+      date: DateTime.now(), // Date of settlement
+      isExpense:
+          !debt.isOwedToMe, // Paying back is the opposite of the original
       category: 'Other',
-      paymentMethod: 'Cash', // Defaults to cash, user can edit later
+      paymentMethod: 'Cash',
     );
-
-    addTransaction(tx); // Add to the main ledger!
+    addTransaction(tx);
     loadDebts();
   }
 
-  void deleteDebt(DebtItem debt) {
-    debt.delete();
-    loadDebts();
-  }
-
-  // NEW: Move a debt back to Active!
+  // 4. UNSETTLE DEBT -> Removes the counter-transaction!
   void unsettleDebt(DebtItem debt) {
     debt.isSettled = false;
     debt.save();
+
+    var txBox = Hive.box<Transaction>(_boxName);
+    try {
+      var settledTx = txBox.values.firstWhere(
+        (tx) => tx.id == 'settle_${debt.id}',
+      );
+      settledTx.delete();
+    } catch (e) {
+      "";
+    }
+
     loadDebts();
+    loadTransactions();
+  }
+
+  // 5. DELETE DEBT -> Removes ALL linked transactions!
+  void deleteDebt(DebtItem debt) {
+    String debtId = debt.id;
+    debt.delete();
+
+    var txBox = Hive.box<Transaction>(_boxName);
+    try {
+      var tx1 = txBox.values.firstWhere((tx) => tx.id == 'debt_$debtId');
+      tx1.delete();
+    } catch (e) {
+      "";
+    }
+    try {
+      var tx2 = txBox.values.firstWhere((tx) => tx.id == 'settle_$debtId');
+      tx2.delete();
+    } catch (e) {
+      "";
+    }
+
+    loadDebts();
+    loadTransactions();
   }
 }
