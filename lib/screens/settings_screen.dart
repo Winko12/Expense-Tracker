@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:csv/csv.dart';
+import 'package:expense_tracker/screens/wallet_settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -188,6 +189,18 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               // const Divider(height: 0, indent: 56),
+              const Divider(height: 0, indent: 56),
+              _buildIOSListTile(
+                icon: CupertinoIcons.creditcard_fill,
+                iconColor: Colors.purple,
+                title: provider.t('Manage Wallets'),
+                onTap: () => Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) => const WalletSettingsScreen(),
+                  ),
+                ),
+              ),
             ],
           ),
         ).animate().fade(delay: 50.ms).slideY(begin: 0.1, end: 0),

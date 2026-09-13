@@ -27,13 +27,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _selectedPaymentMethod = 'Cash';
   double _liveAmount = 0.0; // NEW
 
-  final List<String> _paymentMethods = [
-    'Cash',
-    'KBZPay',
-    'AYA Pay',
-    'CB Pay',
-    'Bank Transfer',
-  ];
+  // final List<String> _paymentMethods = [
+  //   'Cash',
+  //   'KBZPay',
+  //   'AYA Pay',
+  //   'CB Pay',
+  //   'Bank Transfer',
+  // ];
 
   @override
   void initState() {
@@ -104,8 +104,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ExpenseProvider>(context, listen: false);
+    // final provider = Provider.of<ExpenseProvider>(context, listen: false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final provider = Provider.of<ExpenseProvider>(context, listen: false);
+    final paymentMethods = provider.activeWallets; // NEW: Fetch live from DB!
+    if (!paymentMethods.contains(_selectedPaymentMethod)) {
+      _selectedPaymentMethod = paymentMethods.first;
+    }
     final currentCategories = _isExpense
         ? provider.expenseCategories
         : provider.incomeCategories;
@@ -349,7 +354,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               IOSDropdown(
                 value: _selectedPaymentMethod,
-                items: _paymentMethods,
+                items: paymentMethods,
                 icon: CupertinoIcons.creditcard,
                 onChanged: (v) => setState(() => _selectedPaymentMethod = v!),
               ),

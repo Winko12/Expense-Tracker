@@ -1,5 +1,6 @@
 import 'package:expense_tracker/models/category_item.dart';
 import 'package:expense_tracker/models/debt_item.dart';
+import 'package:expense_tracker/models/wallet_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -210,6 +211,10 @@ class ExpenseProvider extends ChangeNotifier {
       'Delete Debt': 'အကြွေးဖျက်မည်',
       'Lent to': 'ချေးပေးထားသည် -',
       'Borrowed from': 'ချေးယူထားသည် -',
+      'Manage Wallets': 'ပိုက်ဆံအိတ်များစီမံရန်',
+      'Add Wallet': 'ပိုက်ဆံအိတ်ထည့်ရန်',
+      'Edit Wallet': 'ပိုက်ဆံအိတ်ပြင်ရန်',
+      'Wallet Name': 'ပိုက်ဆံအိတ်အမည်',
     };
     return myDict[enText] ?? enText;
   }
@@ -326,29 +331,86 @@ class ExpenseProvider extends ChangeNotifier {
   // ==========================================
 
   // 1. Get a list of all active wallets used in your transactions
-  List<String> get activeWallets {
-    // Start with the default wallets, but add any custom ones found in history
-    Set<String> wallets = {
-      'Cash',
-      'KBZPay',
-      'AYA Pay',
-      'CB Pay',
-      'Bank Transfer',
-    };
-    for (var tx in _transactions) {
-      wallets.add(tx.paymentMethod);
-    }
-    return wallets.toList();
-  }
+  List<WalletItem> _wallets = [];
+  List<String> get activeWallets => _wallets.map((w) => w.name).toList();
+  List<WalletItem> rawWallets() => _wallets;
 
   // 2. Calculate the EXACT real-world balance of a specific wallet
   double walletBalance(String walletName) {
+    // Get the very last second of the selected month
+    DateTime endOfSelectedMonth = DateTime(
+      _selectedMonth.year,
+      _selectedMonth.month + 1,
+      0,
+      23,
+      59,
+      59,
+    );
+
     return _transactions
-        .where((tx) => tx.paymentMethod == walletName)
+        .where(
+          (tx) =>
+              tx.paymentMethod == walletName &&
+              tx.date.isBefore(
+                endOfSelectedMonth.add(const Duration(seconds: 1)),
+              ),
+        )
         .fold(
           0.0,
           (sum, tx) => tx.isExpense ? sum - tx.amount : sum + tx.amount,
         );
+  }
+
+  void loadWallets() {
+    var box = Hive.box<WalletItem>('walletsBox');
+    if (box.isEmpty) {
+      // Default Wallets
+      box.addAll([
+        WalletItem(id: '1', name: 'Cash'),
+        WalletItem(id: '2', name: 'KBZPay'),
+        WalletItem(id: '3', name: 'AYA Pay'),
+        WalletItem(id: '4', name: 'CB Pay'),
+        WalletItem(id: '5', name: 'Bank Transfer'),
+      ]);
+    }
+    _wallets = box.values.toList();
+    notifyListeners();
+  }
+
+  void addWallet(WalletItem wallet) {
+    Hive.box<WalletItem>('walletsBox').add(wallet);
+    loadWallets();
+  }
+
+  void updateWallet(WalletItem wallet, String newName) {
+    String oldName = wallet.name;
+    wallet.name = newName;
+    wallet.save();
+
+    // Update main ledger
+    var txBox = Hive.box<Transaction>(_boxName);
+    for (var tx in txBox.values) {
+      if (tx.paymentMethod == oldName) {
+        tx.paymentMethod = newName;
+        tx.save();
+      }
+    }
+
+    var debtBox = Hive.box<DebtItem>('debtsBox');
+    for (var debt in debtBox.values) {
+      if (debt.paymentMethod == oldName) {
+        debt.paymentMethod = newName;
+        debt.save();
+      }
+    }
+    loadWallets();
+    loadTransactions();
+    loadDebts();
+  }
+
+  void deleteWallet(WalletItem wallet) {
+    wallet.delete();
+    loadWallets();
   }
 
   double get monthlyAverage {

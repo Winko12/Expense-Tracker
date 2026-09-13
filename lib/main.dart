@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'models/category_item.dart';
 import 'models/transaction.dart';
+import 'models/wallet_item.dart';
 import 'providers/expense_provider.dart';
 import 'screens/main_screen.dart';
 
@@ -19,11 +20,13 @@ void main() async {
   Hive.registerAdapter(TransactionAdapter());
   Hive.registerAdapter(CategoryItemAdapter());
   Hive.registerAdapter(DebtItemAdapter());
+  Hive.registerAdapter(WalletItemAdapter());
 
   // 3. Open the box (like opening a specific table in a database)
   await Hive.openBox<Transaction>('transactionsBox');
   await Hive.openBox<CategoryItem>('categoriesBox');
   await Hive.openBox<DebtItem>('debtsBox');
+  await Hive.openBox<WalletItem>('walletsBox');
   await Hive.openBox('settingsBox');
 
   // Wrap the app in our Provider so it can manage state
@@ -32,7 +35,8 @@ void main() async {
       create: (context) => ExpenseProvider()
         ..loadTransactions()
         ..loadCategories()
-        ..loadDebts(),
+        ..loadDebts()
+        ..loadWallets(),
       child: const MyApp(),
     ),
   );

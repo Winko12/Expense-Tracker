@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/debt_item.dart';
 import '../../providers/expense_provider.dart';
@@ -20,15 +21,31 @@ void showAddDebtBottomSheet(
   bool isOwedToMe = existingDebt?.isOwedToMe ?? true;
   DateTime selectedDate = existingDebt?.date ?? DateTime.now();
 
+  final provider = Provider.of<ExpenseProvider>(context, listen: false);
+  final paymentMethods = provider.activeWallets; // NEW: Fetch live from DB!
+  // if (!paymentMethods.contains(selectedPaymentMethod))
+  //   selectedPaymentMethod = paymentMethods.first;
+
+  // final paymentMethods = provider.activeWallets;
+  String selectedPaymentMethod =
+      existingDebt?.paymentMethod ??
+      (paymentMethods.isNotEmpty ? paymentMethods.first : 'Cash');
+
+  // Fallback: If existing payment method is not in activeWallets list
+  if (paymentMethods.isNotEmpty &&
+      !paymentMethods.contains(selectedPaymentMethod)) {
+    selectedPaymentMethod = paymentMethods.first;
+  }
+
   // NEW: Wallet Logic
-  String selectedPaymentMethod = existingDebt?.paymentMethod ?? 'Cash';
-  final List<String> paymentMethods = [
-    'Cash',
-    'KBZPay',
-    'AYA Pay',
-    'CB Pay',
-    'Bank Transfer',
-  ];
+  // String selectedPaymentMethod = existingDebt?.paymentMethod ?? 'Cash';
+  // final List<String> paymentMethods = [
+  //   'Cash',
+  //   'KBZPay',
+  //   'AYA Pay',
+  //   'CB Pay',
+  //   'Bank Transfer',
+  // ];
 
   showCupertinoModalPopup(
     context: context,
