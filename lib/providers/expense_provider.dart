@@ -321,6 +321,36 @@ class ExpenseProvider extends ChangeNotifier {
     return rollover + monthlyIncome - filteredLockedSavings - monthlyExpense;
   }
 
+  // ==========================================
+  // TRUE WALLET BALANCES (Swipeable Accounts)
+  // ==========================================
+
+  // 1. Get a list of all active wallets used in your transactions
+  List<String> get activeWallets {
+    // Start with the default wallets, but add any custom ones found in history
+    Set<String> wallets = {
+      'Cash',
+      'KBZPay',
+      'AYA Pay',
+      'CB Pay',
+      'Bank Transfer',
+    };
+    for (var tx in _transactions) {
+      wallets.add(tx.paymentMethod);
+    }
+    return wallets.toList();
+  }
+
+  // 2. Calculate the EXACT real-world balance of a specific wallet
+  double walletBalance(String walletName) {
+    return _transactions
+        .where((tx) => tx.paymentMethod == walletName)
+        .fold(
+          0.0,
+          (sum, tx) => tx.isExpense ? sum - tx.amount : sum + tx.amount,
+        );
+  }
+
   double get monthlyAverage {
     if (_selectedDay != null) {
       return monthlyExpense; // If viewing 1 day, average is just that day's cost
