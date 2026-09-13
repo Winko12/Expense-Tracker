@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/expense_provider.dart';
+import '../widgets/common/add_debt_bottom_sheet.dart'; // Make sure this is imported!
 
 class DebtsScreen extends StatefulWidget {
   const DebtsScreen({super.key});
@@ -17,8 +18,6 @@ class DebtsScreen extends StatefulWidget {
 
 class _DebtsScreenState extends State<DebtsScreen> {
   bool _showActive = true;
-
-  // NEW: Pagination Variables
   final ScrollController _scrollController = ScrollController();
   int _limit = 15;
 
@@ -48,15 +47,23 @@ class _DebtsScreenState extends State<DebtsScreen> {
       decimalDigits: 0,
     );
 
-    // Apply pagination
     final fullList = _showActive ? provider.activeDebts : provider.settledDebts;
     final hasMore = fullList.length > _limit;
     final displayList = fullList.take(_limit).toList();
 
+    // DASHBOARD MATH
+    final owedToMe = _showActive
+        ? provider.activeOwedToMe
+        : provider.settledOwedToMe;
+    final iOwe = _showActive ? provider.activeIOwe : provider.settledIOwe;
+    final netDebt = _showActive
+        ? provider.activeNetDebt
+        : provider.settledNetDebt;
+
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        // 1. GLASSMORPHISM APP BAR (No + button here anymore!)
+        // 1. APP BAR
         SliverAppBar(
           pinned: true,
           backgroundColor: Colors.transparent,
@@ -77,7 +84,102 @@ class _DebtsScreenState extends State<DebtsScreen> {
           ),
         ),
 
-        // 2. TOGGLE
+        // 2. NEW: DEBTS DASHBOARD HEADER!
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
+            child: Column(
+              children: [
+                Text(
+                  provider.t('Net Debt'),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  format.format(netDebt),
+                  style: TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.activeGreen.withValues(
+                          alpha: 0.1,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.arrow_down_left,
+                            color: CupertinoColors.activeGreen,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${provider.t('Owed to Me')}: ${format.format(owedToMe)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: CupertinoColors.activeGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.destructiveRed.withValues(
+                          alpha: 0.1,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.arrow_up_right,
+                            color: CupertinoColors.destructiveRed,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${provider.t('I Owe')}: ${format.format(iOwe)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: CupertinoColors.destructiveRed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ).animate().fade().slideY(begin: -0.1, end: 0),
+          ),
+        ),
+
+        // 3. TOGGLE
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -101,14 +203,14 @@ class _DebtsScreenState extends State<DebtsScreen> {
                 },
                 onValueChanged: (val) => setState(() {
                   _showActive = val!;
-                  _limit = 15; // Reset pagination when switching tabs
+                  _limit = 15;
                 }),
               ),
             ),
           ),
         ),
 
-        // 3. PAGINATED & SWIPEABLE DEBT LIST
+        // 4. LIST WITH TAP TO EDIT
         if (displayList.isEmpty)
           SliverFillRemaining(
             child: Center(
@@ -137,12 +239,9 @@ class _DebtsScreenState extends State<DebtsScreen> {
                     ? CupertinoIcons.arrow_down_left_circle_fill
                     : CupertinoIcons.arrow_up_right_circle_fill;
 
-                // BI-DIRECTIONAL SWIPING!
                 return Dismissible(
                   key: Key(debt.id),
-                  direction:
-                      DismissDirection.horizontal, // Allow Swipe Left AND Right
-                  // SWIPE RIGHT: Settle / Unsettle
+                  direction: DismissDirection.horizontal,
                   background: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -159,8 +258,6 @@ class _DebtsScreenState extends State<DebtsScreen> {
                       size: 28,
                     ),
                   ),
-
-                  // SWIPE LEFT: Delete
                   secondaryBackground: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -175,10 +272,8 @@ class _DebtsScreenState extends State<DebtsScreen> {
                       size: 28,
                     ),
                   ),
-
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.endToStart) {
-                      // DELETE CONFIRMATION
                       final confirm = await showCupertinoDialog<bool>(
                         context: context,
                         builder: (ctx) => CupertinoAlertDialog(
@@ -199,7 +294,6 @@ class _DebtsScreenState extends State<DebtsScreen> {
                       if (confirm == true) provider.deleteDebt(debt);
                       return confirm;
                     } else {
-                      // SETTLE / UNSETTLE CONFIRMATION
                       final actionText = debt.isSettled
                           ? provider.t('Unsettle')
                           : provider.t('Settle');
@@ -237,69 +331,79 @@ class _DebtsScreenState extends State<DebtsScreen> {
                       return confirm;
                     }
                   },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  // NEW: GESTURE DETECTOR OPENS EDIT MODE!
+                  child: GestureDetector(
+                    onTap: () => showAddDebtBottomSheet(
+                      context,
+                      provider,
+                      existingDebt: debt,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(icon, color: color, size: 36),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(icon, color: color, size: 36),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  debt.personName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat('MMM dd, yyyy').format(debt.date),
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                debt.personName,
-                                style: const TextStyle(
+                                format.format(debt.amount),
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
+                                  color: color,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 8),
                               Text(
-                                DateFormat('MMM dd, yyyy').format(debt.date),
+                                provider.t(
+                                  debt.isSettled ? 'Settled' : 'Active',
+                                ),
                                 style: const TextStyle(
                                   color: Colors.grey,
-                                  fontSize: 13,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              format.format(debt.amount),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: color,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              provider.t(debt.isSettled ? 'Settled' : 'Active'),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ).animate().fade().slideX(begin: 0.05, end: 0);

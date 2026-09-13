@@ -204,6 +204,10 @@ class ExpenseProvider extends ChangeNotifier {
       'Active': 'လက်ရှိ',
       'Unsettle': 'ပြန်လည်သက်ဝင်စေမည်', // Unsettle
       'Mark as Active': 'လက်ရှိစာရင်းသို့ပြောင်းမည်', // Mark as Active
+      'Net Debt': 'အသားတင် အကြွေး',
+      'Owed to Me': 'ရရန်ရှိ',
+      'I Owe': 'ပေးရန်ရှိ',
+      'Delete Debt': 'အကြွေးဖျက်မည်',
     };
     return myDict[enText] ?? enText;
   }
@@ -594,6 +598,24 @@ class ExpenseProvider extends ChangeNotifier {
   List<DebtItem> _debts = [];
   List<DebtItem> get activeDebts => _debts.where((d) => !d.isSettled).toList();
   List<DebtItem> get settledDebts => _debts.where((d) => d.isSettled).toList();
+
+  // DEBT DASHBOARD MATH
+  double get activeOwedToMe => activeDebts
+      .where((d) => d.isOwedToMe)
+      .fold(0.0, (sum, d) => sum + d.amount);
+  double get activeIOwe => activeDebts
+      .where((d) => !d.isOwedToMe)
+      .fold(0.0, (sum, d) => sum + d.amount);
+  double get activeNetDebt =>
+      activeOwedToMe - activeIOwe; // Positive = People owe you more!
+
+  double get settledOwedToMe => settledDebts
+      .where((d) => d.isOwedToMe)
+      .fold(0.0, (sum, d) => sum + d.amount);
+  double get settledIOwe => settledDebts
+      .where((d) => !d.isOwedToMe)
+      .fold(0.0, (sum, d) => sum + d.amount);
+  double get settledNetDebt => settledOwedToMe - settledIOwe;
 
   void loadDebts() {
     var box = Hive.box<DebtItem>('debtsBox');
