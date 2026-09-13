@@ -638,7 +638,7 @@ class ExpenseProvider extends ChangeNotifier {
       date: debt.date,
       isExpense: debt.isOwedToMe, // Lending = Expense, Borrowing = Income
       category: 'Other',
-      paymentMethod: 'Cash',
+      paymentMethod: debt.paymentMethod,
     );
     addTransaction(tx);
     loadDebts();
@@ -651,11 +651,13 @@ class ExpenseProvider extends ChangeNotifier {
     double newAmount,
     bool newIsOwedToMe,
     DateTime newDate,
+    String newPaymentMethod,
   ) {
     debt.personName = newName;
     debt.amount = newAmount;
     debt.isOwedToMe = newIsOwedToMe;
     debt.date = newDate;
+    debt.paymentMethod = newPaymentMethod;
     debt.save();
 
     var txBox = Hive.box<Transaction>(_boxName);
@@ -671,6 +673,7 @@ class ExpenseProvider extends ChangeNotifier {
       linkedTx.amount = debt.amount;
       linkedTx.date = debt.date;
       linkedTx.isExpense = debt.isOwedToMe;
+      linkedTx.paymentMethod = debt.paymentMethod;
       linkedTx.save();
     } catch (e) {
       /* Transaction might have been manually deleted by user */
@@ -686,6 +689,7 @@ class ExpenseProvider extends ChangeNotifier {
           : 'I paid back ${debt.personName}';
       settledTx.amount = debt.amount;
       settledTx.isExpense = !debt.isOwedToMe;
+      settledTx.paymentMethod = debt.paymentMethod;
       settledTx.save();
     } catch (e) {}
 
@@ -708,7 +712,7 @@ class ExpenseProvider extends ChangeNotifier {
       isExpense:
           !debt.isOwedToMe, // Paying back is the opposite of the original
       category: 'Other',
-      paymentMethod: 'Cash',
+      paymentMethod: debt.paymentMethod,
     );
     addTransaction(tx);
     loadDebts();

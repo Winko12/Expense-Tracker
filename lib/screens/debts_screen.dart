@@ -225,11 +225,12 @@ class _DebtsScreenState extends State<DebtsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
-                if (index == displayList.length)
+                if (index == displayList.length) {
                   return const Padding(
                     padding: EdgeInsets.all(20.0),
                     child: Center(child: CupertinoActivityIndicator()),
                   );
+                }
 
                 final debt = displayList[index];
                 final color = debt.isOwedToMe
@@ -319,13 +320,14 @@ class _DebtsScreenState extends State<DebtsScreen> {
                           provider.unsettleDebt(debt);
                         } else {
                           provider.settleDebt(debt);
-                          if (context.mounted)
+                          if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(provider.t('Transaction saved!')),
                                 backgroundColor: Colors.green,
                               ),
                             );
+                          }
                         }
                       }
                       return confirm;
@@ -369,7 +371,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  DateFormat('MMM dd, yyyy').format(debt.date),
+                                  '${debt.paymentMethod} • ${DateFormat('MMM dd').format(debt.date)}',
                                   style: const TextStyle(
                                     color: Colors.grey,
                                     fontSize: 13,

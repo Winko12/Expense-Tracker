@@ -6,7 +6,6 @@ import '../../models/debt_item.dart';
 import '../../providers/expense_provider.dart';
 import 'ios_form_elements.dart';
 
-// NEW: Added existingDebt parameter!
 void showAddDebtBottomSheet(
   BuildContext context,
   ExpenseProvider provider, {
@@ -20,6 +19,16 @@ void showAddDebtBottomSheet(
   );
   bool isOwedToMe = existingDebt?.isOwedToMe ?? true;
   DateTime selectedDate = existingDebt?.date ?? DateTime.now();
+
+  // NEW: Wallet Logic
+  String selectedPaymentMethod = existingDebt?.paymentMethod ?? 'Cash';
+  final List<String> paymentMethods = [
+    'Cash',
+    'KBZPay',
+    'AYA Pay',
+    'CB Pay',
+    'Bank Transfer',
+  ];
 
   showCupertinoModalPopup(
     context: context,
@@ -41,7 +50,6 @@ void showAddDebtBottomSheet(
           child: Material(
             color: Colors.transparent,
             child: SingleChildScrollView(
-              // Wrap in scroll view in case keyboard pushes it up
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,7 +101,15 @@ void showAddDebtBottomSheet(
                     ),
                   ),
 
-                  // NEW: DATE PICKER!
+                  // NEW: WALLET SELECTOR
+                  IOSDropdown(
+                    value: selectedPaymentMethod,
+                    items: paymentMethods,
+                    icon: CupertinoIcons.creditcard,
+                    onChanged: (v) =>
+                        setModalState(() => selectedPaymentMethod = v!),
+                  ),
+
                   GestureDetector(
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -102,8 +118,9 @@ void showAddDebtBottomSheet(
                         firstDate: DateTime(2020),
                         lastDate: DateTime.now(),
                       );
-                      if (picked != null)
+                      if (picked != null) {
                         setModalState(() => selectedDate = picked);
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -140,16 +157,16 @@ void showAddDebtBottomSheet(
                       final amount = double.tryParse(amountController.text);
                       if (name.isNotEmpty && amount != null && amount > 0) {
                         if (existingDebt != null) {
-                          // USE NEW UPDATE LOGIC TO SYNC WITH LEDGER!
+                          // FIXED: Now saves the Wallet choice!
                           provider.updateDebt(
                             existingDebt,
                             name,
                             amount,
                             isOwedToMe,
                             selectedDate,
+                            selectedPaymentMethod,
                           );
                         } else {
-                          // CREATE NEW!
                           provider.addDebt(
                             DebtItem(
                               id: DateTime.now().millisecondsSinceEpoch
@@ -158,6 +175,8 @@ void showAddDebtBottomSheet(
                               amount: amount,
                               date: selectedDate,
                               isOwedToMe: isOwedToMe,
+                              paymentMethod:
+                                  selectedPaymentMethod, // Saves wallet!
                             ),
                           );
                         }
@@ -170,7 +189,6 @@ void showAddDebtBottomSheet(
                     ),
                   ),
 
-                  // NEW: DELETE BUTTON FOR EDIT MODE
                   if (existingDebt != null) ...[
                     const SizedBox(height: 10),
                     TextButton.icon(

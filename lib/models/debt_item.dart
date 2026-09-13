@@ -22,6 +22,9 @@ class DebtItem extends HiveObject {
   @HiveField(5)
   bool isSettled; // true = Debt is paid off!
 
+  @HiveField(6, defaultValue: 'Cash')
+  String paymentMethod;
+
   DebtItem({
     required this.id,
     required this.personName,
@@ -29,5 +32,6 @@ class DebtItem extends HiveObject {
     required this.date,
     required this.isOwedToMe,
     this.isSettled = false,
+    required this.paymentMethod,
   });
 }
