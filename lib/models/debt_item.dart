@@ -25,6 +25,9 @@ class DebtItem extends HiveObject {
   @HiveField(6, defaultValue: 'Cash')
   String paymentMethod;
 
+  @HiveField(7)
+  DateTime? settledDate;
+
   DebtItem({
     required this.id,
     required this.personName,
@@ -33,5 +36,6 @@ class DebtItem extends HiveObject {
     required this.isOwedToMe,
     this.isSettled = false,
     required this.paymentMethod,
+    this.settledDate,
   });
 }

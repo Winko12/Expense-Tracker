@@ -52,11 +52,13 @@ class ExpenseProvider extends ChangeNotifier {
     // 1. Load saved Stats Date Range
     int? startMs = settingsBox.get('statsStartDate');
     int? endMs = settingsBox.get('statsEndDate');
-    if (startMs != null && endMs != null) {
-      _statsDateRange = DateTimeRange(
-        start: DateTime.fromMillisecondsSinceEpoch(startMs),
-        end: DateTime.fromMillisecondsSinceEpoch(endMs),
-      );
+    bool isEndToday = settingsBox.get('isStatsEndToday', defaultValue: false);
+    if (startMs != null) {
+      DateTime start = DateTime.fromMillisecondsSinceEpoch(startMs);
+      DateTime end = isEndToday
+          ? DateTime.now()
+          : DateTime.fromMillisecondsSinceEpoch(endMs!);
+      _statsDateRange = DateTimeRange(start: start, end: end);
     }
 
     // 2. THE FIX: Load the custom target date (Instead of the old _customRemainingDays)
@@ -215,6 +217,8 @@ class ExpenseProvider extends ChangeNotifier {
       'Add Wallet': 'ပိုက်ဆံအိတ်ထည့်ရန်',
       'Edit Wallet': 'ပိုက်ဆံအိတ်ပြင်ရန်',
       'Wallet Name': 'ပိုက်ဆံအိတ်အမည်',
+      'Lent Date': 'ချေးပေးသည့်ရက်',
+      'Settled Date': 'ရှင်းလင်းသည့်ရက်',
     };
     return myDict[enText] ?? enText;
   }
@@ -524,9 +528,22 @@ class ExpenseProvider extends ChangeNotifier {
     if (range == null) {
       box.delete('statsStartDate');
       box.delete('statsEndDate');
+      box.delete('isStatsEndToday');
     } else {
+      DateTime today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
+      DateTime pickedEnd = DateTime(
+        range.end.year,
+        range.end.month,
+        range.end.day,
+      );
+      bool isToday = pickedEnd.isAtSameMomentAs(today);
       box.put('statsStartDate', range.start.millisecondsSinceEpoch);
       box.put('statsEndDate', range.end.millisecondsSinceEpoch);
+      box.put('isStatsEndToday', isToday);
     }
     notifyListeners();
   }
@@ -792,6 +809,7 @@ class ExpenseProvider extends ChangeNotifier {
   // 3. SETTLE DEBT -> Creates a counter-transaction!
   void settleDebt(DebtItem debt) {
     debt.isSettled = true;
+    debt.settledDate = DateTime.now();
     debt.save();
 
     final tx = Transaction(
@@ -800,7 +818,7 @@ class ExpenseProvider extends ChangeNotifier {
           ? '${debt.personName} paid me back'
           : 'I paid back ${debt.personName}',
       amount: debt.amount,
-      date: DateTime.now(), // Date of settlement
+      date: debt.settledDate!, // Date of settlement
       isExpense:
           !debt.isOwedToMe, // Paying back is the opposite of the original
       category: 'Other',
@@ -813,6 +831,7 @@ class ExpenseProvider extends ChangeNotifier {
   // 4. UNSETTLE DEBT -> Removes the counter-transaction!
   void unsettleDebt(DebtItem debt) {
     debt.isSettled = false;
+    debt.settledDate = null;
     debt.save();
 
     var txBox = Hive.box<Transaction>(_boxName);

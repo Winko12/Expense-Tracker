@@ -371,6 +371,22 @@ class _DebtsScreenState extends State<DebtsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
+                                  '${provider.t('Date')}: ${DateFormat('MMM dd, yyyy').format(debt.date)}',
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (debt.isSettled && debt.settledDate != null)
+                                  Text(
+                                    '${provider.t('Settled')}: ${DateFormat('MMM dd, yyyy').format(debt.settledDate!)}',
+                                    style: const TextStyle(
+                                      color: CupertinoColors.activeBlue,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                Text(
                                   '${debt.paymentMethod} • ${DateFormat('MMM dd').format(debt.date)}',
                                   style: const TextStyle(
                                     color: Colors.grey,
