@@ -24,13 +24,14 @@ class DebtItemAdapter extends TypeAdapter<DebtItem> {
       isOwedToMe: fields[4] as bool,
       isSettled: fields[5] as bool,
       paymentMethod: fields[6] == null ? 'Cash' : fields[6] as String,
+      settledDate: fields[7] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DebtItem obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class DebtItemAdapter extends TypeAdapter<DebtItem> {
       ..writeByte(5)
       ..write(obj.isSettled)
       ..writeByte(6)
-      ..write(obj.paymentMethod);
+      ..write(obj.paymentMethod)
+      ..writeByte(7)
+      ..write(obj.settledDate);
   }
 
   @override

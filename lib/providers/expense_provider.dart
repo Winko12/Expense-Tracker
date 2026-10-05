@@ -215,6 +215,8 @@ class ExpenseProvider extends ChangeNotifier {
       'Add Wallet': 'ပိုက်ဆံအိတ်ထည့်ရန်',
       'Edit Wallet': 'ပိုက်ဆံအိတ်ပြင်ရန်',
       'Wallet Name': 'ပိုက်ဆံအိတ်အမည်',
+      'Lent': 'ချေးပေးခဲ့သည်',
+      'Borrowed': 'ချေးယူခဲ့သည်',
     };
     return myDict[enText] ?? enText;
   }
@@ -783,6 +785,7 @@ class ExpenseProvider extends ChangeNotifier {
       settledTx.isExpense = !debt.isOwedToMe;
       settledTx.paymentMethod = debt.paymentMethod;
       settledTx.save();
+      // ignore: empty_catches
     } catch (e) {}
 
     loadDebts();
@@ -792,6 +795,7 @@ class ExpenseProvider extends ChangeNotifier {
   // 3. SETTLE DEBT -> Creates a counter-transaction!
   void settleDebt(DebtItem debt) {
     debt.isSettled = true;
+    debt.settledDate = DateTime.now();
     debt.save();
 
     final tx = Transaction(
@@ -800,7 +804,7 @@ class ExpenseProvider extends ChangeNotifier {
           ? '${debt.personName} paid me back'
           : 'I paid back ${debt.personName}',
       amount: debt.amount,
-      date: DateTime.now(), // Date of settlement
+      date: debt.settledDate!, // Date of settlement
       isExpense:
           !debt.isOwedToMe, // Paying back is the opposite of the original
       category: 'Other',
@@ -813,6 +817,7 @@ class ExpenseProvider extends ChangeNotifier {
   // 4. UNSETTLE DEBT -> Removes the counter-transaction!
   void unsettleDebt(DebtItem debt) {
     debt.isSettled = false;
+    debt.settledDate = null;
     debt.save();
 
     var txBox = Hive.box<Transaction>(_boxName);

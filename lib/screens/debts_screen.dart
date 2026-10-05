@@ -370,6 +370,34 @@ class _DebtsScreenState extends State<DebtsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
+                                Builder(
+                                  builder: (context) {
+                                    String dateString;
+                                    if (debt.isSettled &&
+                                        debt.settledDate != null) {
+                                      // If settled, show BOTH dates!
+                                      final String actionStr = provider.t(
+                                        debt.isOwedToMe ? 'Lent' : 'Borrowed',
+                                      );
+                                      dateString =
+                                          '${debt.paymentMethod} • $actionStr: ${DateFormat('MMM dd').format(debt.date)} • ${provider.t('Settled')}: ${DateFormat('MMM dd').format(debt.settledDate!)}';
+                                    } else {
+                                      // If active, just show the original date
+                                      dateString =
+                                          '${debt.paymentMethod} • ${DateFormat('MMM dd, yyyy').format(debt.date)}';
+                                    }
+
+                                    return Text(
+                                      dateString,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  },
+                                ),
                                 Text(
                                   '${debt.paymentMethod} • ${DateFormat('MMM dd').format(debt.date)}',
                                   style: const TextStyle(
