@@ -29,9 +29,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           : provider.savingsValue.toStringAsFixed(0),
     );
     _daysController = TextEditingController(
-      text: provider.hasCustomDays
-          ? provider.effectiveRemainingDays.toString()
-          : '',
+      text: provider.hasCustomDays ? provider.budgetDuration.toString() : '',
     );
   }
 
@@ -45,6 +43,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ExpenseProvider>(context);
+
     final format = NumberFormat.currency(
       symbol: '${provider.currencySymbol} ',
       decimalDigits: 0,
@@ -223,7 +222,54 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
                 const Divider(height: 0, indent: 56),
 
-                // EDITABLE REMAINING DAYS
+                // 1. CYCLE START DATE (Tap to pick)
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: provider.budgetStartDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2050),
+                    );
+                    if (picked != null) {
+                      provider.updateBudgetCycle(startDate: picked);
+                    }
+                  },
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.calendar,
+                        color: Colors.blueAccent,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      provider.t('Start Date'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                      ),
+                    ),
+                    trailing: Text(
+                      DateFormat(
+                        'MMM dd, yyyy',
+                      ).format(provider.budgetStartDate),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 0, indent: 56),
+
+                // 2. CYCLE LENGTH (Type total days, e.g. 30)
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(6),
@@ -232,13 +278,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      CupertinoIcons.calendar,
+                      CupertinoIcons.arrow_right_arrow_left,
                       color: Colors.purple,
                       size: 20,
                     ),
                   ),
                   title: Text(
-                    provider.t('Remaining Days'),
+                    provider.t('Cycle Length'),
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 16,
@@ -250,31 +296,106 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       controller: _daysController,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.right,
-                      placeholder: '${provider.effectiveRemainingDays}',
+                      placeholder: '30',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey,
                       ),
                       onChanged: (val) {
-                        if (val.isEmpty) {
-                          provider.updateCustomRemainingDays(null);
-                        } else {
-                          int? days = int.tryParse(val);
-                          if (days != null && days > 31) {
-                            days = 31;
-                            _daysController.text = '31';
-                            _daysController.selection =
-                                TextSelection.fromPosition(
-                                  const TextPosition(offset: 2),
-                                );
-                          }
-                          provider.updateCustomRemainingDays(days);
+                        int? days = int.tryParse(val);
+                        if (days != null && days > 0) {
+                          provider.updateBudgetCycle(durationDays: days);
                         }
                       },
                     ),
                   ),
                 ),
+                const Divider(height: 0, indent: 56),
+
+                // 3. DAYS LEFT (Automatically counts down to 0!)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.timer,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    provider.t('Days Left'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                    ),
+                  ),
+                  trailing: Text(
+                    '${provider.effectiveRemainingDays}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+
+                // EDITABLE REMAINING DAYS
+                // ListTile(
+                //   leading: Container(
+                //     padding: const EdgeInsets.all(6),
+                //     decoration: BoxDecoration(
+                //       color: Colors.purple.withOpacity(0.15),
+                //       borderRadius: BorderRadius.circular(8),
+                //     ),
+                //     child: const Icon(
+                //       CupertinoIcons.calendar,
+                //       color: Colors.purple,
+                //       size: 20,
+                //     ),
+                //   ),
+                //   title: Text(
+                //     provider.t('Remaining Days'),
+                //     style: const TextStyle(
+                //       fontWeight: FontWeight.w500,
+                //       fontSize: 16,
+                //     ),
+                //   ),
+                //   trailing: SizedBox(
+                //     width: 70,
+                //     child: CupertinoTextField(
+                //       controller: _daysController,
+                //       keyboardType: TextInputType.number,
+                //       textAlign: TextAlign.right,
+                //       placeholder: '${provider.effectiveRemainingDays}',
+                //       style: const TextStyle(
+                //         fontSize: 16,
+                //         fontWeight: FontWeight.bold,
+                //         color: Colors.grey,
+                //       ),
+                //       onChanged: (val) {
+                //         if (val.isEmpty) {
+                //           provider.updateCustomRemainingDays(null);
+                //         } else {
+                //           int? days = int.tryParse(val);
+                //           if (days != null && days > 31) {
+                //             days = 31;
+                //             _daysController.text = '31';
+                //             _daysController.selection =
+                //                 TextSelection.fromPosition(
+                //                   const TextPosition(offset: 2),
+                //                 );
+                //           }
+                //           provider.updateCustomRemainingDays(days);
+                //         }
+                //       },
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ).animate().fade(delay: 300.ms).slideY(begin: 0.1, end: 0),

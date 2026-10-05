@@ -68,6 +68,13 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
           CupertinoActionSheetAction(
             onPressed: () {
+              provider.setStatsFilterMode('Budget Cycle');
+              Navigator.pop(context);
+            },
+            child: Text(provider.t('Budget Cycle')),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
               provider.setStatsFilterMode('All Time');
               Navigator.pop(context);
             },
@@ -134,6 +141,10 @@ class _StatsScreenState extends State<StatsScreen> {
             provider.statsDateRange != null) {
           dateText =
               '${DateFormat('MMM dd').format(provider.statsDateRange!.start)} - ${DateFormat('MMM dd').format(provider.statsDateRange!.end)}';
+        } else if (provider.statsFilterMode == 'Budget Cycle') {
+          // Show the exact dates of the Budget Cycle!
+          dateText =
+              '${DateFormat('MMM dd').format(provider.budgetStartDate)} - ${DateFormat('MMM dd').format(provider.budgetEndDate)}';
         }
 
         return CustomScrollView(

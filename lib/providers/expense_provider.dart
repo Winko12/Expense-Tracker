@@ -36,6 +36,26 @@ class ExpenseProvider extends ChangeNotifier {
   String _statsFilterMode = 'This Month'; // NEW: Default to This Month
   String get statsFilterMode => _statsFilterMode;
 
+  DateTime? _budgetStartDate;
+  int? _budgetDurationDays;
+
+  DateTime get budgetStartDate {
+    if (_budgetStartDate != null) return _budgetStartDate!;
+    DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
+  }
+
+  DateTime get budgetEndDate {
+    int duration =
+        _budgetDurationDays ??
+        DateTime(budgetStartDate.year, budgetStartDate.month + 1, 0).day;
+    return budgetStartDate.add(Duration(days: duration - 1));
+  }
+
+  int get budgetDuration =>
+      _budgetDurationDays ??
+      DateTime(budgetStartDate.year, budgetStartDate.month + 1, 0).day;
+
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
     _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
@@ -64,6 +84,11 @@ class ExpenseProvider extends ChangeNotifier {
         start: DateTime.fromMillisecondsSinceEpoch(startMs),
         end: DateTime.fromMillisecondsSinceEpoch(endMs),
       );
+      int? bStartMs = settingsBox.get('budgetStartDateMs');
+      if (bStartMs != null) {
+        _budgetStartDate = DateTime.fromMillisecondsSinceEpoch(bStartMs);
+      }
+      _budgetDurationDays = settingsBox.get('budgetDurationDays');
     }
 
     // 2. THE FIX: Load the custom target date (Instead of the old _customRemainingDays)
@@ -83,6 +108,21 @@ class ExpenseProvider extends ChangeNotifier {
         settingsBox.delete('customTargetDateMs');
       }
     }
+  }
+
+  void updateBudgetCycle({DateTime? startDate, int? durationDays}) {
+    var box = Hive.box('settingsBox');
+
+    if (startDate != null) {
+      _budgetStartDate = startDate;
+      box.put('budgetStartDateMs', startDate.millisecondsSinceEpoch);
+    }
+
+    if (durationDays != null) {
+      _budgetDurationDays = durationDays;
+      box.put('budgetDurationDays', durationDays);
+    }
+    notifyListeners();
   }
 
   // NEW: Update Custom Days (Caps at 31)
@@ -230,6 +270,10 @@ class ExpenseProvider extends ChangeNotifier {
       // 'This Month': 'ယခုလ',
       'Last 30 Days': 'လွန်ခဲ့သော ရက် ၃၀',
       'Custom Range': 'စိတ်ကြိုက်ရွေးချယ်ရန်',
+      'Budget Cycle': 'ဘတ်ဂျက် ကာလ',
+      'Start Date': 'စတင်မည့်ရက်',
+      'Cycle Length': 'ကာလအပိုင်းအခြား (ရက်)',
+      'Days Left': 'ကျန်ရှိသောရက်များ',
     };
     return myDict[enText] ?? enText;
   }
@@ -295,20 +339,35 @@ class ExpenseProvider extends ChangeNotifier {
   // This will show a negative number if the search is mostly expenses (like searching "Food")
   double get searchNetBalance => searchTotalIncome - searchTotalExpense;
 
-  double _calculateRollover(DateTime targetMonth) {
-    DateTime firstDayOfTarget = DateTime(
-      targetMonth.year,
-      targetMonth.month,
-      1,
+  double _calculateRollover(DateTime targetDate) {
+    DateTime start = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
     );
     double rollover = 0.0;
     for (var tx in _transactions) {
-      if (tx.date.isBefore(firstDayOfTarget)) {
+      if (tx.date.isBefore(start)) {
         rollover += tx.isExpense ? -tx.amount : tx.amount;
       }
     }
     return rollover;
   }
+
+  // double _calculateRollover(DateTime targetMonth) {
+  //   DateTime firstDayOfTarget = DateTime(
+  //     targetMonth.year,
+  //     targetMonth.month,
+  //     1,
+  //   );
+  //   double rollover = 0.0;
+  //   for (var tx in _transactions) {
+  //     if (tx.date.isBefore(firstDayOfTarget)) {
+  //       rollover += tx.isExpense ? -tx.amount : tx.amount;
+  //     }
+  //   }
+  //   return rollover;
+  // }
 
   // NEW: Calculate exactly how much was spent on the specifically selected day
   double get selectedDayExpense {
@@ -451,32 +510,30 @@ class ExpenseProvider extends ChangeNotifier {
   // ==========================================
 
   // 1. Get exact income for the REAL current month
-  double get realCurrentMonthIncome {
-    DateTime now = DateTime.now();
-    return _transactions
-        .where(
-          (tx) =>
-              !tx.isExpense &&
-              tx.date.year == now.year &&
-              tx.date.month == now.month,
-        )
-        .fold(0.0, (sum, tx) => sum + tx.amount);
-  }
+  double get realCurrentMonthIncome => _transactions
+      .where(
+        (tx) =>
+            !tx.isExpense &&
+            tx.date.isAfter(
+              budgetStartDate.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(budgetEndDate.add(const Duration(days: 1))),
+      )
+      .fold(0.0, (sum, tx) => sum + tx.amount);
 
   // 2. Get exact expense for the REAL current month
-  double get realCurrentMonthExpense {
-    DateTime now = DateTime.now();
-    return _transactions
-        .where(
-          (tx) =>
-              tx.isExpense &&
-              tx.date.year == now.year &&
-              tx.date.month == now.month,
-        )
-        .fold(0.0, (sum, tx) => sum + tx.amount);
-  }
+  double get realCurrentMonthExpense => _transactions
+      .where(
+        (tx) =>
+            tx.isExpense &&
+            tx.date.isAfter(
+              budgetStartDate.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(budgetEndDate.add(const Duration(days: 1))),
+      )
+      .fold(0.0, (sum, tx) => sum + tx.amount);
 
-  double get realRollover => _calculateRollover(DateTime.now());
+  double get realRollover => _calculateRollover(budgetStartDate);
 
   double get totalAvailableFunds => realRollover + realCurrentMonthIncome;
 
@@ -510,21 +567,29 @@ class ExpenseProvider extends ChangeNotifier {
   // 3. How much money is left this month?
   double get realRemainingBalance => spendableIncome - realCurrentMonthExpense;
 
-  // 4. How many days are left in this month? (Including today)
-  // REPLACED: Now checks if you typed a custom number first!
   int get effectiveRemainingDays {
     DateTime now = DateTime.now();
     DateTime today = DateTime(now.year, now.month, now.day);
-
-    if (_customTargetDate != null) {
-      int daysLeft = _customTargetDate!.difference(today).inDays;
-      if (daysLeft > 0) return daysLeft;
-    }
-
-    // Default fallback: Days left in the current real month
-    int totalDays = DateTime(now.year, now.month + 1, 0).day;
-    return totalDays - now.day + 1;
+    if (today.isAfter(budgetEndDate)) return 0; // Cycle ended!
+    int daysLeft = budgetEndDate.difference(today).inDays + 1;
+    return daysLeft > 0 ? daysLeft : 0;
   }
+
+  // 4. How many days are left in this month? (Including today)
+  // REPLACED: Now checks if you typed a custom number first!
+  // int get effectiveRemainingDays {
+  //   DateTime now = DateTime.now();
+  //   DateTime today = DateTime(now.year, now.month, now.day);
+
+  //   if (_customTargetDate != null) {
+  //     int daysLeft = _customTargetDate!.difference(today).inDays;
+  //     if (daysLeft > 0) return daysLeft;
+  //   }
+
+  //   // Default fallback: Days left in the current real month
+  //   int totalDays = DateTime(now.year, now.month + 1, 0).day;
+  //   return totalDays - now.day + 1;
+  // }
 
   // UPDATED: Now divides by the effective days!
   double get safeDailyLimit {
@@ -573,24 +638,28 @@ class ExpenseProvider extends ChangeNotifier {
 
   List<Transaction> get statsTransactions {
     DateTime now = DateTime.now();
-
     return _transactions.where((tx) {
-      if (_statsFilterMode == 'All Time') {
-        return true;
-      } else if (_statsFilterMode == 'This Month') {
+      if (_statsFilterMode == 'All Time') return true;
+      if (_statsFilterMode == 'This Month') {
         return tx.date.year == now.year && tx.date.month == now.month;
-      } else if (_statsFilterMode == 'Last 30 Days') {
-        DateTime thirtyDaysAgo = now.subtract(const Duration(days: 30));
-        return tx.date.isAfter(thirtyDaysAgo) &&
+      }
+      if (_statsFilterMode == 'Last 30 Days') {
+        return tx.date.isAfter(now.subtract(const Duration(days: 30))) &&
             tx.date.isBefore(now.add(const Duration(days: 1)));
-      } else if (_statsFilterMode == 'Custom Range' &&
-          _statsDateRange != null) {
+      }
+      if (_statsFilterMode == 'Budget Cycle') {
+        return tx.date.isAfter(
+              budgetStartDate.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(budgetEndDate.add(const Duration(days: 1)));
+      }
+      if (_statsFilterMode == 'Custom Range' && _statsDateRange != null) {
         return tx.date.isAfter(
               _statsDateRange!.start.subtract(const Duration(days: 1)),
             ) &&
             tx.date.isBefore(_statsDateRange!.end.add(const Duration(days: 1)));
       }
-      return true; // Fallback
+      return true;
     }).toList();
   }
 
