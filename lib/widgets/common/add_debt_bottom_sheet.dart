@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 
 import '../../models/debt_item.dart';
 import '../../providers/expense_provider.dart';
@@ -19,38 +18,26 @@ void showAddDebtBottomSheet(
     text: existingDebt != null ? existingDebt.amount.toString() : '',
   );
   bool isOwedToMe = existingDebt?.isOwedToMe ?? true;
+
   DateTime selectedDate = existingDebt?.date ?? DateTime.now();
+  // NEW: State for Settled Date!
+  DateTime? selectedSettledDate = existingDebt?.settledDate;
 
-  final provider = Provider.of<ExpenseProvider>(context, listen: false);
-  final paymentMethods = provider.activeWallets; // NEW: Fetch live from DB!
-  // if (!paymentMethods.contains(selectedPaymentMethod))
-  //   selectedPaymentMethod = paymentMethods.first;
-
-  // final paymentMethods = provider.activeWallets;
-  String selectedPaymentMethod =
-      existingDebt?.paymentMethod ??
-      (paymentMethods.isNotEmpty ? paymentMethods.first : 'Cash');
-
-  // Fallback: If existing payment method is not in activeWallets list
-  if (paymentMethods.isNotEmpty &&
-      !paymentMethods.contains(selectedPaymentMethod)) {
+  String selectedPaymentMethod = existingDebt?.paymentMethod ?? 'Cash';
+  final List<String> paymentMethods = provider.activeWallets;
+  if (!paymentMethods.contains(selectedPaymentMethod)) {
     selectedPaymentMethod = paymentMethods.first;
   }
-
-  // NEW: Wallet Logic
-  // String selectedPaymentMethod = existingDebt?.paymentMethod ?? 'Cash';
-  // final List<String> paymentMethods = [
-  //   'Cash',
-  //   'KBZPay',
-  //   'AYA Pay',
-  //   'CB Pay',
-  //   'Bank Transfer',
-  // ];
 
   showCupertinoModalPopup(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (context, setModalState) {
+        // Dynamic label based on toggle
+        String dateLabel = isOwedToMe
+            ? provider.t('Lent Date')
+            : provider.t('Borrowed Date');
+
         return Container(
           padding: EdgeInsets.only(
             top: 20,
@@ -118,7 +105,6 @@ void showAddDebtBottomSheet(
                     ),
                   ),
 
-                  // NEW: WALLET SELECTOR
                   IOSDropdown(
                     value: selectedPaymentMethod,
                     items: paymentMethods,
@@ -127,6 +113,7 @@ void showAddDebtBottomSheet(
                         setModalState(() => selectedPaymentMethod = v!),
                   ),
 
+                  // 1. ORIGINAL DATE PICKER
                   GestureDetector(
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -144,7 +131,7 @@ void showAddDebtBottomSheet(
                         horizontal: 16,
                         vertical: 16,
                       ),
-                      margin: const EdgeInsets.only(bottom: 20),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
                             ? const Color(0xFF1C1C1E)
@@ -160,7 +147,7 @@ void showAddDebtBottomSheet(
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            DateFormat('MMM dd, yyyy').format(selectedDate),
+                            '$dateLabel: ${DateFormat('MMM dd, yyyy').format(selectedDate)}',
                             style: const TextStyle(fontSize: 16),
                           ),
                         ],
@@ -168,13 +155,63 @@ void showAddDebtBottomSheet(
                     ),
                   ),
 
+                  // 2. SETTLED DATE PICKER (Only shows if debt is Settled!)
+                  if (existingDebt != null &&
+                      existingDebt.isSettled &&
+                      selectedSettledDate != null)
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedSettledDate!,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setModalState(() => selectedSettledDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1C1C1E)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              CupertinoIcons.calendar_badge_plus,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${provider.t('Settled Date')}: ${DateFormat('MMM dd, yyyy').format(selectedSettledDate!)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 8),
+
                   CupertinoButton.filled(
                     onPressed: () {
                       final name = nameController.text.trim();
                       final amount = double.tryParse(amountController.text);
                       if (name.isNotEmpty && amount != null && amount > 0) {
                         if (existingDebt != null) {
-                          // FIXED: Now saves the Wallet choice!
+                          // UPDATE: Passes both dates!
                           provider.updateDebt(
                             existingDebt,
                             name,
@@ -182,8 +219,10 @@ void showAddDebtBottomSheet(
                             isOwedToMe,
                             selectedDate,
                             selectedPaymentMethod,
+                            selectedSettledDate,
                           );
                         } else {
+                          // CREATE!
                           provider.addDebt(
                             DebtItem(
                               id: DateTime.now().millisecondsSinceEpoch
@@ -192,8 +231,7 @@ void showAddDebtBottomSheet(
                               amount: amount,
                               date: selectedDate,
                               isOwedToMe: isOwedToMe,
-                              paymentMethod:
-                                  selectedPaymentMethod, // Saves wallet!
+                              paymentMethod: selectedPaymentMethod,
                             ),
                           );
                         }

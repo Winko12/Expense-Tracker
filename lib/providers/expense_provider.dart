@@ -33,6 +33,9 @@ class ExpenseProvider extends ChangeNotifier {
   int get reminderHour => _reminderHour;
   int get reminderMinute => _reminderMinute;
 
+  String _statsFilterMode = 'This Month'; // NEW: Default to This Month
+  String get statsFilterMode => _statsFilterMode;
+
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
     _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
@@ -50,6 +53,10 @@ class ExpenseProvider extends ChangeNotifier {
     _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
 
     // 1. Load saved Stats Date Range
+    _statsFilterMode = settingsBox.get(
+      'statsFilterMode',
+      defaultValue: 'This Month',
+    );
     int? startMs = settingsBox.get('statsStartDate');
     int? endMs = settingsBox.get('statsEndDate');
     if (startMs != null && endMs != null) {
@@ -217,6 +224,12 @@ class ExpenseProvider extends ChangeNotifier {
       'Wallet Name': 'ပိုက်ဆံအိတ်အမည်',
       'Lent': 'ချေးပေးခဲ့သည်',
       'Borrowed': 'ချေးယူခဲ့သည်',
+      'Lent Date': 'ချေးပေးခဲ့သော ရက်စွဲ',
+      'Borrowed Date': 'ချေးယူခဲ့သော ရက်စွဲ',
+      'Settled Date': 'ရှင်းလင်းခဲ့သော ရက်စွဲ',
+      // 'This Month': 'ယခုလ',
+      'Last 30 Days': 'လွန်ခဲ့သော ရက် ၃၀',
+      'Custom Range': 'စိတ်ကြိုက်ရွေးချယ်ရန်',
     };
     return myDict[enText] ?? enText;
   }
@@ -545,20 +558,56 @@ class ExpenseProvider extends ChangeNotifier {
     return suggestions.toList();
   }
 
-  List<Transaction> get statsTransactions {
-    if (_statsDateRange == null) return _transactions;
-    return _transactions
-        .where(
-          (tx) =>
-              tx.date.isAfter(
-                _statsDateRange!.start.subtract(const Duration(days: 1)),
-              ) &&
-              tx.date.isBefore(
-                _statsDateRange!.end.add(const Duration(days: 1)),
-              ),
-        )
-        .toList();
+  void setStatsFilterMode(String mode, {DateTimeRange? customRange}) {
+    _statsFilterMode = mode;
+    var box = Hive.box('settingsBox');
+    box.put('statsFilterMode', mode);
+
+    if (customRange != null) {
+      _statsDateRange = customRange;
+      box.put('statsStartDate', customRange.start.millisecondsSinceEpoch);
+      box.put('statsEndDate', customRange.end.millisecondsSinceEpoch);
+    }
+    notifyListeners();
   }
+
+  List<Transaction> get statsTransactions {
+    DateTime now = DateTime.now();
+
+    return _transactions.where((tx) {
+      if (_statsFilterMode == 'All Time') {
+        return true;
+      } else if (_statsFilterMode == 'This Month') {
+        return tx.date.year == now.year && tx.date.month == now.month;
+      } else if (_statsFilterMode == 'Last 30 Days') {
+        DateTime thirtyDaysAgo = now.subtract(const Duration(days: 30));
+        return tx.date.isAfter(thirtyDaysAgo) &&
+            tx.date.isBefore(now.add(const Duration(days: 1)));
+      } else if (_statsFilterMode == 'Custom Range' &&
+          _statsDateRange != null) {
+        return tx.date.isAfter(
+              _statsDateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(_statsDateRange!.end.add(const Duration(days: 1)));
+      }
+      return true; // Fallback
+    }).toList();
+  }
+
+  // List<Transaction> get statsTransactions {
+  //   if (_statsDateRange == null) return _transactions;
+  //   return _transactions
+  //       .where(
+  //         (tx) =>
+  //             tx.date.isAfter(
+  //               _statsDateRange!.start.subtract(const Duration(days: 1)),
+  //             ) &&
+  //             tx.date.isBefore(
+  //               _statsDateRange!.end.add(const Duration(days: 1)),
+  //             ),
+  //       )
+  //       .toList();
+  // }
 
   double get statsTotalIncome => statsTransactions
       .where((tx) => !tx.isExpense)
@@ -746,12 +795,14 @@ class ExpenseProvider extends ChangeNotifier {
     bool newIsOwedToMe,
     DateTime newDate,
     String newPaymentMethod,
+    DateTime? newSettledDate,
   ) {
     debt.personName = newName;
     debt.amount = newAmount;
     debt.isOwedToMe = newIsOwedToMe;
     debt.date = newDate;
     debt.paymentMethod = newPaymentMethod;
+    if (newSettledDate != null) debt.settledDate = newSettledDate;
     debt.save();
 
     var txBox = Hive.box<Transaction>(_boxName);
@@ -782,6 +833,7 @@ class ExpenseProvider extends ChangeNotifier {
           ? '${debt.personName} paid me back'
           : 'I paid back ${debt.personName}';
       settledTx.amount = debt.amount;
+      if (newSettledDate != null) settledTx.date = newSettledDate;
       settledTx.isExpense = !debt.isOwedToMe;
       settledTx.paymentMethod = debt.paymentMethod;
       settledTx.save();

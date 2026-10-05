@@ -240,6 +240,18 @@ class _DebtsScreenState extends State<DebtsScreen> {
                     ? CupertinoIcons.arrow_down_left_circle_fill
                     : CupertinoIcons.arrow_up_right_circle_fill;
 
+                String dateString;
+                if (debt.isSettled && debt.settledDate != null) {
+                  final String actionStr = provider.t(
+                    debt.isOwedToMe ? 'Lent' : 'Borrowed',
+                  );
+                  dateString =
+                      '${debt.paymentMethod} • $actionStr: ${DateFormat('MMM dd').format(debt.date)} • ${provider.t('Settled')}: ${DateFormat('MMM dd').format(debt.settledDate!)}';
+                } else {
+                  dateString =
+                      '${debt.paymentMethod} • ${DateFormat('MMM dd, yyyy').format(debt.date)}';
+                }
+
                 return Dismissible(
                   key: Key(debt.id),
                   direction: DismissDirection.horizontal,

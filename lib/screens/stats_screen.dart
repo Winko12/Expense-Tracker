@@ -43,6 +43,64 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
+  void _showFilterOptions(BuildContext context, ExpenseProvider provider) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: Text(
+          provider.t('Select Time Range'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              provider.setStatsFilterMode('This Month');
+              Navigator.pop(context);
+            },
+            child: Text(provider.t('This Month')),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              provider.setStatsFilterMode('Last 30 Days');
+              Navigator.pop(context);
+            },
+            child: Text(provider.t('Last 30 Days')),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              provider.setStatsFilterMode('All Time');
+              Navigator.pop(context);
+            },
+            child: Text(provider.t('All Time')),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.pop(context); // Close the menu first
+              // Then open the calendar!
+              DateTimeRange? picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now(),
+                initialDateRange: provider.statsDateRange,
+              );
+              if (picked != null) {
+                provider.setStatsFilterMode(
+                  'Custom Range',
+                  customRange: picked,
+                );
+              }
+            },
+            child: Text(provider.t('Custom Range')),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          child: Text(provider.t('Cancel')),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickDateRange(
     BuildContext context,
     ExpenseProvider provider,
@@ -71,8 +129,9 @@ class _StatsScreenState extends State<StatsScreen> {
             ? provider.statsTotalExpense
             : provider.statsTotalIncome;
 
-        String dateText = provider.t('All Time');
-        if (provider.statsDateRange != null) {
+        String dateText = provider.t(provider.statsFilterMode);
+        if (provider.statsFilterMode == 'Custom Range' &&
+            provider.statsDateRange != null) {
           dateText =
               '${DateFormat('MMM dd').format(provider.statsDateRange!.start)} - ${DateFormat('MMM dd').format(provider.statsDateRange!.end)}';
         }
@@ -99,7 +158,7 @@ class _StatsScreenState extends State<StatsScreen> {
               centerTitle: true,
               // Tap the title to open the Date Range Picker!
               title: GestureDetector(
-                onTap: () => _pickDateRange(context, provider),
+                onTap: () => _showFilterOptions(context, provider),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -129,17 +188,17 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
               ),
               // Clear Date button if a date is picked
-              actions: [
-                if (provider.statsDateRange != null)
-                  IconButton(
-                    icon: const Icon(
-                      CupertinoIcons.clear_thick,
-                      size: 18,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () => provider.setStatsDateRange(null),
-                  ),
-              ],
+              // actions: [
+              //   if (provider.statsDateRange != null)
+              //     IconButton(
+              //       icon: const Icon(
+              //         CupertinoIcons.clear_thick,
+              //         size: 18,
+              //         color: Colors.grey,
+              //       ),
+              //       onPressed: () => provider.setStatsDateRange(null),
+              //     ),
+              // ],
             ),
 
             // ==========================================
