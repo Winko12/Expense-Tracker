@@ -24,7 +24,7 @@ class DebtItemAdapter extends TypeAdapter<DebtItem> {
       isOwedToMe: fields[4] as bool,
       isSettled: fields[5] as bool,
       paymentMethod: fields[6] == null ? 'Cash' : fields[6] as String,
-    )..settledDate = fields[7] as DateTime?;
+    );
   }
 
   @override

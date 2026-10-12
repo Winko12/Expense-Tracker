@@ -68,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             // 2. EXTRACTED DYNAMIC HEADER
-            HomeBalanceHeader(provider: provider),
+            HomeBalanceHeader(),
 
             // 3. TRANSACTION LIST
             if (provider.paginatedTransactions.isEmpty)

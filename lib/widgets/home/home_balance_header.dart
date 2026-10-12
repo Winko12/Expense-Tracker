@@ -2,12 +2,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import '../../providers/expense_provider.dart';
 
 class HomeBalanceHeader extends StatefulWidget {
-  final ExpenseProvider provider;
-  const HomeBalanceHeader({super.key, required this.provider});
+  // final ExpenseProvider provider;
+  const HomeBalanceHeader({super.key});
 
   @override
   State<HomeBalanceHeader> createState() => _HomeBalanceHeaderState();
@@ -25,7 +26,7 @@ class _HomeBalanceHeaderState extends State<HomeBalanceHeader> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = widget.provider;
+    final provider = Provider.of<ExpenseProvider>(context);
     final format = NumberFormat.currency(
       symbol: '${provider.currencySymbol} ',
       decimalDigits: 0,

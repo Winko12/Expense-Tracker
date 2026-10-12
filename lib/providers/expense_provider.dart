@@ -33,6 +33,29 @@ class ExpenseProvider extends ChangeNotifier {
   int get reminderHour => _reminderHour;
   int get reminderMinute => _reminderMinute;
 
+  String _statsFilterMode = 'This Month'; // NEW: Default to This Month
+  String get statsFilterMode => _statsFilterMode;
+
+  DateTime? _budgetStartDate;
+  int? _budgetDurationDays;
+
+  DateTime get budgetStartDate {
+    if (_budgetStartDate != null) return _budgetStartDate!;
+    DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
+  }
+
+  DateTime get budgetEndDate {
+    int duration =
+        _budgetDurationDays ??
+        DateTime(budgetStartDate.year, budgetStartDate.month + 1, 0).day;
+    return budgetStartDate.add(Duration(days: duration - 1));
+  }
+
+  int get budgetDuration =>
+      _budgetDurationDays ??
+      DateTime(budgetStartDate.year, budgetStartDate.month + 1, 0).day;
+
   ExpenseProvider() {
     var settingsBox = Hive.box('settingsBox');
     _isBurmese = settingsBox.get('isBurmese', defaultValue: false);
@@ -50,6 +73,10 @@ class ExpenseProvider extends ChangeNotifier {
     _reminderMinute = settingsBox.get('reminderMinute', defaultValue: 0);
 
     // 1. Load saved Stats Date Range
+    _statsFilterMode = settingsBox.get(
+      'statsFilterMode',
+      defaultValue: 'This Month',
+    );
     int? startMs = settingsBox.get('statsStartDate');
     int? endMs = settingsBox.get('statsEndDate');
     bool isEndToday = settingsBox.get('isStatsEndToday', defaultValue: false);
@@ -78,6 +105,21 @@ class ExpenseProvider extends ChangeNotifier {
         settingsBox.delete('customTargetDateMs');
       }
     }
+  }
+
+  void updateBudgetCycle({DateTime? startDate, int? durationDays}) {
+    var box = Hive.box('settingsBox');
+
+    if (startDate != null) {
+      _budgetStartDate = startDate;
+      box.put('budgetStartDateMs', startDate.millisecondsSinceEpoch);
+    }
+
+    if (durationDays != null) {
+      _budgetDurationDays = durationDays;
+      box.put('budgetDurationDays', durationDays);
+    }
+    notifyListeners();
   }
 
   // NEW: Update Custom Days (Caps at 31)
@@ -224,7 +266,11 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // 2. FILTERS & PAGINATION
-  DateTime _selectedMonth = DateTime.now();
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
   DateTime? _selectedDay;
   String _searchQuery = '';
   DateTimeRange? _statsDateRange;
@@ -284,20 +330,35 @@ class ExpenseProvider extends ChangeNotifier {
   // This will show a negative number if the search is mostly expenses (like searching "Food")
   double get searchNetBalance => searchTotalIncome - searchTotalExpense;
 
-  double _calculateRollover(DateTime targetMonth) {
-    DateTime firstDayOfTarget = DateTime(
-      targetMonth.year,
-      targetMonth.month,
-      1,
+  double _calculateRollover(DateTime targetDate) {
+    DateTime start = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
     );
     double rollover = 0.0;
     for (var tx in _transactions) {
-      if (tx.date.isBefore(firstDayOfTarget)) {
+      if (tx.date.isBefore(start)) {
         rollover += tx.isExpense ? -tx.amount : tx.amount;
       }
     }
     return rollover;
   }
+
+  // double _calculateRollover(DateTime targetMonth) {
+  //   DateTime firstDayOfTarget = DateTime(
+  //     targetMonth.year,
+  //     targetMonth.month,
+  //     1,
+  //   );
+  //   double rollover = 0.0;
+  //   for (var tx in _transactions) {
+  //     if (tx.date.isBefore(firstDayOfTarget)) {
+  //       rollover += tx.isExpense ? -tx.amount : tx.amount;
+  //     }
+  //   }
+  //   return rollover;
+  // }
 
   // NEW: Calculate exactly how much was spent on the specifically selected day
   double get selectedDayExpense {
@@ -440,32 +501,30 @@ class ExpenseProvider extends ChangeNotifier {
   // ==========================================
 
   // 1. Get exact income for the REAL current month
-  double get realCurrentMonthIncome {
-    DateTime now = DateTime.now();
-    return _transactions
-        .where(
-          (tx) =>
-              !tx.isExpense &&
-              tx.date.year == now.year &&
-              tx.date.month == now.month,
-        )
-        .fold(0.0, (sum, tx) => sum + tx.amount);
-  }
+  double get realCurrentMonthIncome => _transactions
+      .where(
+        (tx) =>
+            !tx.isExpense &&
+            tx.date.isAfter(
+              budgetStartDate.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(budgetEndDate.add(const Duration(days: 1))),
+      )
+      .fold(0.0, (sum, tx) => sum + tx.amount);
 
   // 2. Get exact expense for the REAL current month
-  double get realCurrentMonthExpense {
-    DateTime now = DateTime.now();
-    return _transactions
-        .where(
-          (tx) =>
-              tx.isExpense &&
-              tx.date.year == now.year &&
-              tx.date.month == now.month,
-        )
-        .fold(0.0, (sum, tx) => sum + tx.amount);
-  }
+  double get realCurrentMonthExpense => _transactions
+      .where(
+        (tx) =>
+            tx.isExpense &&
+            tx.date.isAfter(
+              budgetStartDate.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(budgetEndDate.add(const Duration(days: 1))),
+      )
+      .fold(0.0, (sum, tx) => sum + tx.amount);
 
-  double get realRollover => _calculateRollover(DateTime.now());
+  double get realRollover => _calculateRollover(budgetStartDate);
 
   double get totalAvailableFunds => realRollover + realCurrentMonthIncome;
 
@@ -499,21 +558,29 @@ class ExpenseProvider extends ChangeNotifier {
   // 3. How much money is left this month?
   double get realRemainingBalance => spendableIncome - realCurrentMonthExpense;
 
-  // 4. How many days are left in this month? (Including today)
-  // REPLACED: Now checks if you typed a custom number first!
   int get effectiveRemainingDays {
     DateTime now = DateTime.now();
     DateTime today = DateTime(now.year, now.month, now.day);
-
-    if (_customTargetDate != null) {
-      int daysLeft = _customTargetDate!.difference(today).inDays;
-      if (daysLeft > 0) return daysLeft;
-    }
-
-    // Default fallback: Days left in the current real month
-    int totalDays = DateTime(now.year, now.month + 1, 0).day;
-    return totalDays - now.day + 1;
+    if (today.isAfter(budgetEndDate)) return 0; // Cycle ended!
+    int daysLeft = budgetEndDate.difference(today).inDays + 1;
+    return daysLeft > 0 ? daysLeft : 0;
   }
+
+  // 4. How many days are left in this month? (Including today)
+  // REPLACED: Now checks if you typed a custom number first!
+  // int get effectiveRemainingDays {
+  //   DateTime now = DateTime.now();
+  //   DateTime today = DateTime(now.year, now.month, now.day);
+
+  //   if (_customTargetDate != null) {
+  //     int daysLeft = _customTargetDate!.difference(today).inDays;
+  //     if (daysLeft > 0) return daysLeft;
+  //   }
+
+  //   // Default fallback: Days left in the current real month
+  //   int totalDays = DateTime(now.year, now.month + 1, 0).day;
+  //   return totalDays - now.day + 1;
+  // }
 
   // UPDATED: Now divides by the effective days!
   double get safeDailyLimit {
@@ -560,20 +627,60 @@ class ExpenseProvider extends ChangeNotifier {
     return suggestions.toList();
   }
 
-  List<Transaction> get statsTransactions {
-    if (_statsDateRange == null) return _transactions;
-    return _transactions
-        .where(
-          (tx) =>
-              tx.date.isAfter(
-                _statsDateRange!.start.subtract(const Duration(days: 1)),
-              ) &&
-              tx.date.isBefore(
-                _statsDateRange!.end.add(const Duration(days: 1)),
-              ),
-        )
-        .toList();
+  void setStatsFilterMode(String mode, {DateTimeRange? customRange}) {
+    _statsFilterMode = mode;
+    var box = Hive.box('settingsBox');
+    box.put('statsFilterMode', mode);
+
+    if (customRange != null) {
+      _statsDateRange = customRange;
+      box.put('statsStartDate', customRange.start.millisecondsSinceEpoch);
+      box.put('statsEndDate', customRange.end.millisecondsSinceEpoch);
+    }
+    notifyListeners();
   }
+
+  List<Transaction> get statsTransactions {
+    DateTime now = DateTime.now();
+    return _transactions.where((tx) {
+      if (_statsFilterMode == 'All Time') return true;
+      if (_statsFilterMode == 'This Month') {
+        return tx.date.year == now.year && tx.date.month == now.month;
+      }
+      if (_statsFilterMode == 'Last 30 Days') {
+        return tx.date.isAfter(now.subtract(const Duration(days: 30))) &&
+            tx.date.isBefore(now.add(const Duration(days: 1)));
+      }
+      if (_statsFilterMode == 'Budget Cycle') {
+        return tx.date.isAfter(
+              budgetStartDate.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(budgetEndDate.add(const Duration(days: 1)));
+      }
+      if (_statsFilterMode == 'Custom Range' && _statsDateRange != null) {
+        return tx.date.isAfter(
+              _statsDateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
+            tx.date.isBefore(_statsDateRange!.end.add(const Duration(days: 1)));
+      }
+      return true;
+    }).toList();
+  }
+
+  // List<Transaction> get statsTransactions {
+  //   if (_statsDateRange == null) return _transactions;
+  //   return _transactions
+  //       .where(
+  //         (tx) =>
+  //             tx.date.isAfter(
+  //               _statsDateRange!.start.subtract(const Duration(days: 1)),
+  //             ) &&
+  //             tx.date.isBefore(
+  //               _statsDateRange!.end.add(const Duration(days: 1)),
+  //             ),
+  //       )
+  //       .toList();
+  // }
 
   double get statsTotalIncome => statsTransactions
       .where((tx) => !tx.isExpense)
@@ -640,13 +747,13 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addTransaction(Transaction transaction) {
-    Hive.box<Transaction>(_boxName).add(transaction);
+  Future<void> addTransaction(Transaction transaction) async {
+    await Hive.box<Transaction>(_boxName).add(transaction);
     loadTransactions();
   }
 
-  void deleteTransaction(Transaction transaction) {
-    transaction.delete();
+  Future<void> deleteTransaction(Transaction transaction) async {
+    await transaction.delete();
     loadTransactions();
   }
 
@@ -682,7 +789,7 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addCategory(CategoryItem category) {
+  Future<void> addCategory(CategoryItem category) async {
     Hive.box<CategoryItem>('categoriesBox').add(category);
     loadCategories();
   }
@@ -735,7 +842,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // 1. ADD DEBT -> Creates an initial transaction!
-  void addDebt(DebtItem debt) {
+  Future<void> addDebt(DebtItem debt) async {
     Hive.box<DebtItem>('debtsBox').add(debt);
 
     final tx = Transaction(
@@ -761,12 +868,14 @@ class ExpenseProvider extends ChangeNotifier {
     bool newIsOwedToMe,
     DateTime newDate,
     String newPaymentMethod,
+    DateTime? newSettledDate,
   ) {
     debt.personName = newName;
     debt.amount = newAmount;
     debt.isOwedToMe = newIsOwedToMe;
     debt.date = newDate;
     debt.paymentMethod = newPaymentMethod;
+    if (newSettledDate != null) debt.settledDate = newSettledDate;
     debt.save();
 
     var txBox = Hive.box<Transaction>(_boxName);
@@ -797,9 +906,11 @@ class ExpenseProvider extends ChangeNotifier {
           ? '${debt.personName} paid me back'
           : 'I paid back ${debt.personName}';
       settledTx.amount = debt.amount;
+      if (newSettledDate != null) settledTx.date = newSettledDate;
       settledTx.isExpense = !debt.isOwedToMe;
       settledTx.paymentMethod = debt.paymentMethod;
       settledTx.save();
+      // ignore: empty_catches
     } catch (e) {}
 
     loadDebts();
@@ -810,6 +921,7 @@ class ExpenseProvider extends ChangeNotifier {
   void settleDebt(DebtItem debt) {
     debt.isSettled = true;
     debt.settledDate = DateTime.now();
+    debt.settledDate = DateTime.now();
     debt.save();
 
     final tx = Transaction(
@@ -819,6 +931,7 @@ class ExpenseProvider extends ChangeNotifier {
           : 'I paid back ${debt.personName}',
       amount: debt.amount,
       date: debt.settledDate!, // Date of settlement
+      // date: debt.settledDate!, // Date of settlement
       isExpense:
           !debt.isOwedToMe, // Paying back is the opposite of the original
       category: 'Other',
@@ -831,6 +944,7 @@ class ExpenseProvider extends ChangeNotifier {
   // 4. UNSETTLE DEBT -> Removes the counter-transaction!
   void unsettleDebt(DebtItem debt) {
     debt.isSettled = false;
+    debt.settledDate = null;
     debt.settledDate = null;
     debt.save();
 
