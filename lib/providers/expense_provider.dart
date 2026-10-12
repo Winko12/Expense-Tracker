@@ -279,7 +279,11 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // 2. FILTERS & PAGINATION
-  DateTime _selectedMonth = DateTime.now();
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
   DateTime? _selectedDay;
   String _searchQuery = '';
   DateTimeRange? _statsDateRange;
@@ -743,13 +747,13 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addTransaction(Transaction transaction) {
-    Hive.box<Transaction>(_boxName).add(transaction);
+  Future<void> addTransaction(Transaction transaction) async {
+    await Hive.box<Transaction>(_boxName).add(transaction);
     loadTransactions();
   }
 
-  void deleteTransaction(Transaction transaction) {
-    transaction.delete();
+  Future<void> deleteTransaction(Transaction transaction) async {
+    await transaction.delete();
     loadTransactions();
   }
 
@@ -785,7 +789,7 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addCategory(CategoryItem category) {
+  Future<void> addCategory(CategoryItem category) async {
     Hive.box<CategoryItem>('categoriesBox').add(category);
     loadCategories();
   }
@@ -838,7 +842,7 @@ class ExpenseProvider extends ChangeNotifier {
   }
 
   // 1. ADD DEBT -> Creates an initial transaction!
-  void addDebt(DebtItem debt) {
+  Future<void> addDebt(DebtItem debt) async {
     Hive.box<DebtItem>('debtsBox').add(debt);
 
     final tx = Transaction(

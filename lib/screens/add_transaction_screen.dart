@@ -57,7 +57,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  void _saveTransaction() {
+  Future<void> _saveTransaction() async {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
     final enteredTitle = _titleController.text.trim();
     final enteredAmount = double.tryParse(_amountController.text);
@@ -85,20 +85,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         category: _selectedCategory,
         paymentMethod: _selectedPaymentMethod,
       );
-      Provider.of<ExpenseProvider>(
-        context,
-        listen: false,
-      ).addTransaction(newTx);
+      await provider.addTransaction(newTx);
+
+      // await Provider.of<ExpenseProvider>(
+      //   context,
+      //   listen: false,
+      // ).addTransaction(newTx);
     }
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.t('Transaction saved!')),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.t('Transaction saved!')),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
     Navigator.pop(context);
   }
 
